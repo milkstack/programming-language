@@ -1,0 +1,6 @@
+/target
+/compiler/build
+.vscode
+node_modules
+output
+build

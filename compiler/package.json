@@ -1,0 +1,19 @@
+{
+  "name": "compiler-ts",
+  "version": "0.1.0",
+  "description": "TypeScript compiler for the programming language",
+  "main": "src/main.ts",
+  "scripts": {
+    "start": "ts-node src/main.ts",
+    "build": "tsc",
+    "run": "./run.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "llvm-bindings": "^0.4.2"
+  }
+}

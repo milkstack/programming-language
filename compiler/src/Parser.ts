@@ -1,9 +1,14 @@
+import { Logger } from './Logger'
 import { OPERATORS_MAP } from './constants/Operators'
 import { ParseError } from './models/ParseError'
 import { Token } from './models/Token'
 import { TokenType } from './models/TokenType'
+import { AssignmentNode } from './models/nodes/AssignmentNode'
 import { BinaryExpressionNode } from './models/nodes/BinaryExpressionNode'
 import { ExpressionNode } from './models/nodes/ExpressionNode'
+import { ExpresssionStatementNode } from './models/nodes/ExpressionStatementNode'
+import { ForLoopNode } from './models/nodes/ForLoopNode'
+import { FunctionCallNode } from './models/nodes/FunctionCallNode'
 import { FunctionNode } from './models/nodes/FunctionNode'
 import { IdentifierNode } from './models/nodes/IdentifierNode'
 import { IfStatementNode } from './models/nodes/IfStatementNode'
@@ -15,42 +20,11 @@ import { StatementNode } from './models/nodes/StatementNode'
 import { TerminatorNode } from './models/nodes/TerminatorNode'
 import { VariableDefinitionNode } from './models/nodes/VariableDefinitionNode'
 
-// TODO: add a tryConsume method that will consume a token if it is of the expected type
-// and error out if it is not
-// make error pretty printing more global
-
 export class Parser {
   private tokens: Token[]
-  public error: ParseError | undefined = undefined
 
   constructor(tokens: Token[]) {
     this.tokens = tokens
-  }
-
-  private assertType(token: Token | undefined, type: TokenType): boolean {
-    if (!token || token.tokenType !== type) {
-      if (!this.error) {
-        this.error = new ParseError(
-          `Expected ${type}, but got ${token?.tokenType ?? 'undefined'}`,
-          token?.lineNumber ?? 0
-        )
-      }
-      return false
-    }
-    return true
-  }
-
-  private assertDefined<T>(value: T | undefined, message: string): boolean {
-    if (!value) {
-      if (!this.error) {
-        this.error = new ParseError(
-          `Expected ${message}, but got undefined`,
-          this.peek()?.lineNumber ?? 0
-        )
-      }
-      return false
-    }
-    return true
   }
 
   private checkIsOperator(token: Token | undefined): boolean {
@@ -67,50 +41,104 @@ export class Parser {
     return this.tokens[i]
   }
 
-  private consumeToken(): Token | undefined {
-    if (this.peek()) {
-      return this.tokens.shift()
-    }
-    return undefined
+  private consume = (requiredType?: TokenType): Token => {
+    const token = this.peekOrExit(requiredType)
+
+    this.tokens.shift()
+
+    return token
   }
 
-  private parseAtom(): ExpressionNode | undefined {
-    const token = this.consumeToken()!
-    if (!this.assertDefined(token, 'token')) {
-      return undefined
+  private peekOrExit = (requiredType?: TokenType, i?: number): Token => {
+    const token = this.peek(i)
+
+    if (!token) {
+      Logger.logErrors([
+        new ParseError(`Expected ${requiredType}, but got EOF`),
+      ])
+
+      process.exit(1)
     }
 
-    if (token.tokenType === TokenType.LeftParen) {
-      const expression = this.parseExpression(0)!
-      if (!this.assertDefined(expression, 'expression')) {
-        return undefined
-      }
+    if (requiredType && requiredType !== token.tokenType) {
+      Logger.logErrors([
+        new ParseError(
+          `Expected ${requiredType}, but got ${token?.tokenType}`,
+          token?.lineNumber
+        ),
+      ])
+      process.exit(1)
+    }
 
-      const rightParenToken = this.consumeToken()!
-      if (!this.assertType(rightParenToken, TokenType.RightParen)) {
-        return undefined
-      }
+    return token
+  }
+
+  private parseAtom(): ExpressionNode {
+    const token = this.peekOrExit()
+
+    if (token.tokenType === TokenType.LeftParen) {
+      this.consume(TokenType.LeftParen)
+      const expression = this.parseExpression(0)
+
+      this.consume(TokenType.RightParen)
 
       return expression
     }
 
     if (token.tokenType === TokenType.IntegerLiteral) {
+      this.consume(TokenType.IntegerLiteral)
       return new ExpressionNode(
         new TerminatorNode(new IntegerLiteralNode(token))
       )
     }
 
-    if (token.tokenType === TokenType.Identifier) {
-      return new ExpressionNode(new TerminatorNode(new IdentifierNode(token)))
+    // last option. Exit here if we don't find an identifier
+    const identifierToken = this.peekOrExit(TokenType.Identifier)
+    if (this.peek(1)?.tokenType !== TokenType.LeftParen) {
+      this.consume(TokenType.Identifier)
+      return new ExpressionNode(
+        new TerminatorNode(new IdentifierNode(identifierToken))
+      )
     }
 
-    return undefined
+    const functionCallNode = this.parseFunctionCall()
+
+    return new ExpressionNode(new TerminatorNode(functionCallNode))
   }
 
-  private parseExpression(
-    minPrecedence: number = 0
-  ): ExpressionNode | undefined {
-    let atomLHS = this.parseAtom()!
+  private parseAssignment(): AssignmentNode {
+    const identifier = this.consume(TokenType.Identifier)
+
+    this.consume(TokenType.Assign)
+
+    const expression = this.parseExpression()
+
+    return new AssignmentNode(new IdentifierNode(identifier), expression)
+  }
+
+  private parseForLoop(): ForLoopNode {
+    this.consume(TokenType.For)
+    this.consume(TokenType.LeftParen)
+
+    const variableDefinitionNode = this.parseVariableDeclaration(true)
+
+    this.consume(TokenType.Semicolon)
+
+    const condition = this.parseExpression()
+
+    this.consume(TokenType.Semicolon)
+
+    const iterator = this.parseAssignment()
+
+    this.consume(TokenType.RightParen)
+
+    const body = this.parseBody()
+
+    return new ForLoopNode(variableDefinitionNode, condition, iterator, body)
+  }
+
+  private parseExpression(minPrecedence: number = 0): ExpressionNode {
+    let atomLHS = this.parseAtom()
     let possibleOperator: Token | undefined = undefined
     let atomRHS: ExpressionNode | undefined = undefined
 
@@ -131,33 +159,26 @@ export class Parser {
 
       const nextMinPrecedence = precedence + (associativity === 'left' ? 1 : 0)
 
-      this.consumeToken()
+      this.consume()
       atomRHS = this.parseExpression(nextMinPrecedence)
 
-      if (!this.assertDefined(atomRHS, 'right-hand side expression')) {
-        return undefined
-      }
-
       atomLHS = new ExpressionNode(
-        new BinaryExpressionNode(atomLHS, possibleOperator, atomRHS!)
+        new BinaryExpressionNode(atomLHS, possibleOperator, atomRHS)
       )
     }
 
     return atomLHS
   }
 
-  private parseFunctionArgs(): string[] | undefined {
+  private parseFunctionDeclarationArgs(): string[] {
     const args: string[] = []
 
     while (this.peek() && this.peek()!.tokenType === TokenType.Identifier) {
-      const argToken = this.consumeToken()!
-      if (!this.assertType(argToken, TokenType.Identifier)) {
-        return undefined
-      }
+      const argToken = this.consume(TokenType.Identifier)
       args.push(argToken.value!)
 
-      if (this.peek() && this.peek()!.tokenType === TokenType.Comma) {
-        this.consumeToken()
+      if (this.peekOrExit().tokenType === TokenType.Comma) {
+        this.consume()
       } else {
         break
       }
@@ -165,134 +186,82 @@ export class Parser {
     return args
   }
 
-  private parseBody(): (StatementNode | IfStatementNode)[] | undefined {
-    const leftCurlyToken = this.consumeToken()
-    if (!this.assertType(leftCurlyToken, TokenType.LeftCurly)) {
-      return undefined
-    }
+  private parseBody(): StatementNode[] {
+    this.consume(TokenType.LeftCurly)
 
-    const statements: (StatementNode | IfStatementNode)[] = []
+    const statements: StatementNode[] = []
+
     while (this.peek() && this.peek()!.tokenType !== TokenType.RightCurly) {
-      if (this.peek()?.tokenType === TokenType.If) {
-        const ifStatementNode = this.parseIfStatement()
-        if (!this.assertDefined(ifStatementNode, 'if statement')) {
-          return undefined
-        }
-        statements.push(ifStatementNode!)
-        continue
-      }
-
       const statementNode = this.parseStatement()
-      if (!this.assertDefined(statementNode, 'statement')) {
-        return undefined
-      }
-      statements.push(statementNode!)
+      statements.push(statementNode)
     }
 
-    const rightCurlyToken = this.consumeToken()
-    if (!this.assertType(rightCurlyToken, TokenType.RightCurly)) {
-      return undefined
-    }
+    this.consume(TokenType.RightCurly)
 
     return statements
   }
 
-  private parseFunctionPrototype(): PrototypeNode | undefined {
-    const nameToken = this.consumeToken()!
-    if (!this.assertType(nameToken, TokenType.Identifier)) {
-      return undefined
-    }
+  private parseFunctionPrototype(): PrototypeNode {
+    const nameToken = this.consume(TokenType.Identifier)
 
-    const leftParenToken = this.consumeToken()!
-    if (!this.assertType(leftParenToken, TokenType.LeftParen)) {
-      return undefined
-    }
+    this.consume(TokenType.LeftParen)
 
-    const args = this.parseFunctionArgs()
-    if (!this.assertDefined(args, 'function args')) {
-      return undefined
-    }
+    const args = this.parseFunctionDeclarationArgs()
 
-    const rightParenToken = this.consumeToken()!
-    if (!this.assertType(rightParenToken, TokenType.RightParen)) {
-      return undefined
-    }
+    this.consume(TokenType.RightParen)
 
-    return new PrototypeNode(nameToken.value!, args!)
+    return new PrototypeNode(nameToken.value!, args)
   }
 
-  private parseFunctionDefinition(): FunctionNode | undefined {
-    this.consumeToken()!
+  private parseFunctionDefinition(): FunctionNode {
+    this.consume(TokenType.Function)
 
     const prototype = this.parseFunctionPrototype()
-    if (!this.assertDefined(prototype, 'function prototype')) {
-      return undefined
-    }
 
     const body = this.parseBody()
-    if (!this.assertDefined(body, 'function body')) {
-      return undefined
-    }
 
-    return new FunctionNode(prototype!, body!)
+    return new FunctionNode(prototype, body)
   }
 
-  private parseReturn(): ReturnNode | undefined {
-    this.consumeToken()
+  private parseReturn(): ReturnNode {
+    this.consume(TokenType.Return)
 
-    const expression = this.parseExpression()!
-
-    if (!this.assertDefined(expression, 'expression')) {
-      return undefined
-    }
+    const expression = this.parseExpression()
 
     return new ReturnNode(expression)
   }
 
-  private parseVariableDeclaration(): VariableDefinitionNode | undefined {
-    this.consumeToken()
+  private parseVariableDeclaration(
+    allowNoLet: boolean = false
+  ): VariableDefinitionNode {
+    if (!allowNoLet) this.consume(TokenType.Let)
 
-    const identifierToken = this.consumeToken()!
-    if (!this.assertType(identifierToken, TokenType.Identifier)) {
-      return undefined
-    }
+    const identifierToken = this.consume(TokenType.Identifier)
 
-    const assignToken = this.consumeToken()
-    if (!this.assertType(assignToken, TokenType.Assign)) {
-      return undefined
-    }
+    this.consume(TokenType.Assign)
 
-    const expression = this.parseExpression()!
-    if (!this.assertDefined(expression, 'expression')) {
-      return undefined
-    }
+    const expression = this.parseExpression()
 
     return new VariableDefinitionNode(identifierToken, expression)
   }
 
-  private parseIfStatement(): IfStatementNode | undefined {
-    this.consumeToken()
+  private parseIfStatement(): IfStatementNode {
+    this.consume(TokenType.If)
 
-    const condition = this.parseExpression()!
-    if (!this.assertDefined(condition, 'condition')) {
-      return undefined
-    }
+    const condition = this.parseExpression()
 
-    const thenStatements = this.parseBody()!
-    if (!this.assertDefined(thenStatements?.[0], 'then statement')) {
-      return undefined
-    }
+    const thenStatements = this.parseBody()
 
     let elseIfStatement: IfStatementNode | undefined
-    let elseStatements: (StatementNode | IfStatementNode)[] = []
+    let elseStatements: StatementNode[] = []
 
     if (this.peek()?.tokenType === TokenType.Else) {
-      this.consumeToken()
+      this.consume(TokenType.Else)
 
       if (this.peek()?.tokenType === TokenType.If) {
         elseIfStatement = this.parseIfStatement()
       } else {
-        elseStatements = this.parseBody()!
+        elseStatements = this.parseBody()
       }
     }
 
@@ -304,99 +273,124 @@ export class Parser {
     )
   }
 
-  private parseStatement(): StatementNode | IfStatementNode | undefined {
-    const token = this.peek()!
+  private parseFunctionCallArgs(): ExpressionNode[] {
+    const args: ExpressionNode[] = []
 
-    if (!this.assertDefined(token, 'statement')) {
-      return undefined
-    }
+    while (this.peek() && this.peek()!.tokenType !== TokenType.RightParen) {
+      const expression = this.parseExpression()
 
-    let statementNode: StatementNode | IfStatementNode | undefined
-    if (token.tokenType === TokenType.If) {
-      const ifStatementNode = this.parseIfStatement()
-      if (!this.assertDefined(ifStatementNode, 'if statement')) {
-        return undefined
+      args.push(expression)
+
+      const nextToken = this.peekOrExit()
+
+      if (nextToken.tokenType === TokenType.Comma) {
+        this.consume(TokenType.Comma)
+      } else if (nextToken.tokenType === TokenType.RightParen) {
+        return args
+      } else {
+        Logger.logErrors([
+          new ParseError(
+            `Expected comma or right parenthesis, but got ${nextToken.tokenType}`,
+            nextToken.lineNumber
+          ),
+        ])
+
+        process.exit(1)
       }
-      statementNode = ifStatementNode!
+    }
+    return args
+  }
+
+  private parseFunctionCall(): FunctionCallNode {
+    const identifierToken = this.consume(TokenType.Identifier)
+
+    this.consume(TokenType.LeftParen)
+
+    const args = this.parseFunctionCallArgs()
+
+    this.consume(TokenType.RightParen)
+
+    return new FunctionCallNode(identifierToken, args)
+  }
+
+  private parseStatement(): StatementNode {
+    const token = this.peekOrExit()
+
+    if (token.tokenType === TokenType.If) {
+      return new StatementNode(this.parseIfStatement())
     }
 
     if (token.tokenType === TokenType.Return) {
       const returnNode = this.parseReturn()
-      if (!this.assertDefined(returnNode, 'return')) {
-        return undefined
-      }
-
-      statementNode = new StatementNode(returnNode!)
+      this.consume(TokenType.Semicolon)
+      return new StatementNode(returnNode)
     }
 
     if (token.tokenType === TokenType.Let) {
       const variableDefinitionNode = this.parseVariableDeclaration()
-      if (!this.assertDefined(variableDefinitionNode, 'variable declaration')) {
-        return undefined
-      }
-
-      statementNode = new StatementNode(variableDefinitionNode!)
+      this.consume(TokenType.Semicolon)
+      return new StatementNode(variableDefinitionNode)
     }
 
-    const semicolonToken = this.consumeToken()
-    if (!this.assertType(semicolonToken, TokenType.Semicolon)) {
-      return undefined
+    if (token.tokenType === TokenType.For) {
+      return new StatementNode(this.parseForLoop())
     }
 
-    return statementNode
+    // last option. Exit here if we don't find an identifier
+    const identifierToken = this.peekOrExit(TokenType.Identifier)
+
+    if (this.peek(1) && this.peek(1)!.tokenType === TokenType.Assign) {
+      const assignment = this.parseAssignment()
+      this.consume(TokenType.Semicolon)
+
+      return new StatementNode(assignment)
+    }
+
+    const expression = this.parseExpression()
+    this.consume(TokenType.Semicolon)
+    return new StatementNode(new ExpresssionStatementNode(expression))
   }
 
-  public parseProgram(): ProgramNode | undefined {
+  public parseProgram(): ProgramNode {
     const programNode = new ProgramNode([], [], undefined)
 
     while (this.peek()) {
-      const token = this.peek()!
+      const token = this.peekOrExit()
       if (token.tokenType === TokenType.Function) {
-        const identifierToken = this.peek(1)!
+        const identifierToken = this.peekOrExit(TokenType.Identifier, 1)
 
         if (
           identifierToken.tokenType === TokenType.Identifier &&
           identifierToken.value === 'main'
         ) {
           const functionNode = this.parseFunctionDefinition()
-          if (!this.assertDefined(functionNode, 'function definition')) {
-            break
-          }
-          programNode.mainFunction = functionNode!
-          break
+          programNode.mainFunction = functionNode
+          continue
         }
 
         const functionNode = this.parseFunctionDefinition()
-        if (!this.assertDefined(functionNode, 'function definition')) {
-          break
-        }
-        programNode.functions.push(functionNode!)
+        programNode.functions.push(functionNode)
         continue
       }
 
       if (token.tokenType === TokenType.Let) {
         const variableDefinitionNode = this.parseVariableDeclaration()
-        if (
-          !this.assertDefined(variableDefinitionNode, 'variable declaration')
-        ) {
-          break
-        }
-        programNode.globalVariables.push(variableDefinitionNode!)
 
-        const semicolonToken = this.consumeToken()
-        if (!this.assertType(semicolonToken, TokenType.Semicolon)) {
-          break
-        }
+        programNode.globalVariables.push(variableDefinitionNode)
+
+        this.consume(TokenType.Semicolon)
+
         continue
       }
 
-      if (!this.error) {
-        this.error = new ParseError(
+      Logger.logErrors([
+        new ParseError(
           `Unexpected token ${token.tokenType} at program level`,
           token.lineNumber
-        )
-      }
-      break
+        ),
+      ])
+
+      process.exit(1)
     }
 
     return programNode

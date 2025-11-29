@@ -4,15 +4,15 @@ import { StatementNode } from './StatementNode'
 export class IfStatementNode {
   public condition: ExpressionNode
 
-  public thenStatements: (StatementNode | IfStatementNode)[]
+  public thenStatements: StatementNode[]
   public elseIfStatement: IfStatementNode | undefined
-  public elseStatements: (StatementNode | IfStatementNode)[] | undefined
+  public elseStatements: StatementNode[] | undefined
 
   constructor(
     condition: ExpressionNode,
-    thenStatements: (StatementNode | IfStatementNode)[],
+    thenStatements: StatementNode[],
     elseIfStatement: IfStatementNode | undefined,
-    elseStatements?: (StatementNode | IfStatementNode)[]
+    elseStatements?: StatementNode[]
   ) {
     this.condition = condition
     this.thenStatements = thenStatements

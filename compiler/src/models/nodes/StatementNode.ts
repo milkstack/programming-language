@@ -1,10 +1,28 @@
+import { AssignmentNode } from './AssignmentNode'
+import { ExpresssionStatementNode } from './ExpressionStatementNode'
+import { ForLoopNode } from './ForLoopNode'
+import { IfStatementNode } from './IfStatementNode'
 import { ReturnNode } from './ReturnNode'
 import { VariableDefinitionNode } from './VariableDefinitionNode'
 
 export class StatementNode {
-  public variant: ReturnNode | VariableDefinitionNode
+  public variant:
+    | ReturnNode
+    | VariableDefinitionNode
+    | ExpresssionStatementNode
+    | IfStatementNode
+    | ForLoopNode
+    | AssignmentNode
 
-  constructor(variant: ReturnNode | VariableDefinitionNode) {
+  constructor(
+    variant:
+      | ReturnNode
+      | VariableDefinitionNode
+      | ExpresssionStatementNode
+      | IfStatementNode
+      | ForLoopNode
+      | AssignmentNode
+  ) {
     this.variant = variant
   }
 }

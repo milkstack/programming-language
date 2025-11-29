@@ -12,6 +12,11 @@ import { TerminatorNode } from './models/nodes/TerminatorNode'
 import { FunctionNode } from './models/nodes/FunctionNode'
 import { StatementNode } from './models/nodes/StatementNode'
 import { IfStatementNode } from './models/nodes/IfStatementNode'
+import { ExpresssionStatementNode } from './models/nodes/ExpressionStatementNode'
+import { FunctionCallNode } from './models/nodes/FunctionCallNode'
+import { ForLoopNode } from './models/nodes/ForLoopNode'
+import { AssignmentNode } from './models/nodes/AssignmentNode'
+import { Logger } from './Logger'
 
 export class Generator {
   private GlobalVariablesMap: Map<string, llvm.Value> = new Map()
@@ -19,7 +24,6 @@ export class Generator {
   private Context: llvm.LLVMContext
   private Module: llvm.Module
   private Function: llvm.Function | undefined
-  public error: GeneratorError | undefined
 
   constructor() {
     this.Context = new llvm.LLVMContext()
@@ -27,66 +31,187 @@ export class Generator {
     this.Builder = new llvm.IRBuilder(this.Context)
   }
 
-  private generateIntegerLiteral(node: IntegerLiteralNode) {
+  private generateIntegerLiteral(node: IntegerLiteralNode): llvm.ConstantInt {
     const int32Type = llvm.Type.getInt32Ty(this.Context)
-    return llvm.ConstantInt.get(int32Type, parseInt(node.token.value!, 10))
+    const value = this.assertExists(node.token.value, 'generateIntegerLiteral')
+    return llvm.ConstantInt.get(int32Type, parseInt(value, 10))
+  }
+
+  // i THINK that this should only happen due to a bug in the compiler
+  private assertExists<T>(value: T | undefined | null, location: string): T {
+    if (value === undefined || value === null) {
+      Logger.logErrors([
+        new GeneratorError(`Value doesn't exist at ${location}`),
+      ])
+      process.exit(1)
+    }
+
+    return value
   }
 
   private generateIdentifier(
     node: IdentifierNode,
     localVariablesMap: Map<string, llvm.Value>
-  ): llvm.Value | undefined {
+  ): llvm.Value {
     const varName = node.token.value!
 
-    let variable: llvm.Value | undefined = localVariablesMap.get(varName)
-    const isGlobal = !variable && this.GlobalVariablesMap.has(varName)
-
-    if (!variable && !isGlobal) {
-      this.error = new GeneratorError(`Undefined variable: ${varName}`)
-      return undefined
-    }
-
-    if (isGlobal) {
-      variable = this.GlobalVariablesMap.get(varName)!
-    }
+    const variable: llvm.Value = this.assertExists(
+      localVariablesMap.get(varName) ?? this.GlobalVariablesMap.get(varName),
+      'generateIdentifier'
+    )
 
     return this.Builder.CreateLoad(
       llvm.Type.getInt32Ty(this.Context),
-      variable!,
+      variable,
       varName
     )
+  }
+
+  private generateFunctionCall(
+    node: FunctionCallNode,
+    localVariablesMap: Map<string, llvm.Value>
+  ): llvm.Value {
+    const functionName = this.assertExists(
+      node.token.value,
+      'generateFunctionCall -- functionName'
+    )!
+    const _function = this.assertExists(
+      this.Module.getFunction(functionName),
+      'generateFunctionCall -- function'
+    )
+    const args = node.args
+      .map((arg) => this.generateExpression(arg, localVariablesMap))
+
+      .filter((arg): arg is llvm.Value => {
+        if (arg === undefined) {
+          Logger.logErrors([
+            new GeneratorError(`Function ${functionName} argument not found`),
+          ])
+          process.exit(1)
+        }
+        return arg !== undefined
+      })
+
+    if (args.length !== node.args.length) {
+      Logger.logErrors([
+        new GeneratorError(
+          `Mismatched argument length ${args.length} vs ${node.args.length}`
+        ),
+      ])
+      process.exit(1)
+    }
+
+    return this.Builder.CreateCall(_function, args)
+  }
+
+  private generateForLoop(
+    node: ForLoopNode,
+    localVariablesMap: Map<string, llvm.Value>
+  ): void {
+    const currentBlock = this.assertExists(
+      this.Builder.GetInsertBlock(),
+      'generateForLoop'
+    )
+    const _function = this.assertExists(
+      currentBlock?.getParent(),
+      'generateForLoop'
+    )
+
+    this.generateVariableDefinition(
+      node.variableDefinition,
+      localVariablesMap,
+      false
+    )
+
+    const loopCondBB = llvm.BasicBlock.Create(
+      this.Context,
+      'for.cond',
+      _function
+    )
+    const loopBodyBB = llvm.BasicBlock.Create(
+      this.Context,
+      'for.body',
+      _function
+    )
+    const loopIterBB = llvm.BasicBlock.Create(
+      this.Context,
+      'for.iter',
+      _function
+    )
+    const loopEndBB = llvm.BasicBlock.Create(this.Context, 'for.end', _function)
+
+    this.Builder.CreateBr(loopCondBB)
+    this.Builder.SetInsertPoint(loopCondBB)
+
+    const rawCondition = this.assertExists(
+      this.generateExpression(node.condition, localVariablesMap),
+      'generateForLoop -- rawCondition'
+    )
+
+    // convert non comparison expressions into bool(x > 1)
+    const condType = rawCondition.getType()
+    let condition: llvm.Value
+    if (condType.isIntegerTy(1)) {
+      condition = rawCondition
+    } else {
+      const int32Type = llvm.Type.getInt32Ty(this.Context)
+      const zero = llvm.ConstantInt.get(int32Type, 0)
+      condition = this.Builder.CreateICmpNE(rawCondition, zero)
+    }
+
+    this.Builder.CreateCondBr(condition, loopBodyBB, loopEndBB)
+
+    this.Builder.SetInsertPoint(loopBodyBB)
+    this.generateFunctionBody(node.body, localVariablesMap)
+    if (!this.Builder.GetInsertBlock()?.getTerminator()) {
+      this.Builder.CreateBr(loopIterBB)
+    }
+
+    this.Builder.SetInsertPoint(loopIterBB)
+    this.generateAssignment(node.iterator, localVariablesMap)
+    this.Builder.CreateBr(loopCondBB)
+
+    this.Builder.SetInsertPoint(loopEndBB)
   }
 
   private generateExpression(
     node: ExpressionNode,
     localVariablesMap: Map<string, llvm.Value>
-  ): llvm.Value | undefined {
+  ): llvm.Value {
     if (node.variant instanceof TerminatorNode) {
       if (node.variant.variant instanceof IntegerLiteralNode) {
         return this.generateIntegerLiteral(node.variant.variant)
       } else if (node.variant.variant instanceof IdentifierNode) {
         return this.generateIdentifier(node.variant.variant, localVariablesMap)
+      } else if (node.variant.variant instanceof FunctionCallNode) {
+        return this.generateFunctionCall(
+          node.variant.variant,
+          localVariablesMap
+        )
       }
     } else if (node.variant instanceof BinaryExpressionNode) {
       return this.generateBinaryExpression(node.variant, localVariablesMap)
     }
 
-    this.error = new GeneratorError(
-      `Unsupported expression type: ${node.variant}`
-    )
-    return undefined
+    Logger.logErrors([
+      new GeneratorError(`Unsupported expression type: ${node.variant}`),
+    ])
+
+    process.exit(1)
   }
 
   private generateBinaryExpression(
     node: BinaryExpressionNode,
     localVariablesMap: Map<string, llvm.Value>
-  ): llvm.Value | undefined {
-    const left = this.generateExpression(node.left, localVariablesMap)
-    const right = this.generateExpression(node.right, localVariablesMap)
-
-    if (!left || !right) {
-      return undefined
-    }
+  ): llvm.Value {
+    const left = this.assertExists(
+      this.generateExpression(node.left, localVariablesMap),
+      'generateBinaryExpression'
+    )
+    const right = this.assertExists(
+      this.generateExpression(node.right, localVariablesMap),
+      'generateBinaryExpression'
+    )
 
     switch (node.operator.tokenType) {
       // Arithmetic operators
@@ -112,11 +237,37 @@ export class Generator {
       case TokenType.GreaterThanEqual:
         return this.Builder.CreateICmpSGE(left, right)
       default:
-        this.error = new GeneratorError(
-          `Unsupported operator: ${node.operator.tokenType}`
-        )
-        return undefined
+        Logger.logErrors([
+          new GeneratorError(
+            `Unsupported operator: ${node.operator.tokenType}`
+          ),
+        ])
+        process.exit(1)
     }
+  }
+
+  private generateAssignment(
+    node: AssignmentNode,
+    localVariablesMap: Map<string, llvm.Value>
+  ): void {
+    const varName = this.assertExists(
+      node.identifier.token.value,
+      'generateAssignment -- varName'
+    )
+
+    const variable: llvm.Value = this.assertExists(
+      localVariablesMap.get(varName) ?? this.GlobalVariablesMap.get(varName),
+      'generateAssignment'
+    )
+
+    const value = this.generateExpression(node.expression, localVariablesMap)
+
+    // TODO: should we error here?
+    if (!value) {
+      return
+    }
+
+    this.Builder.CreateStore(value, variable)
   }
 
   private generateVariableDefinition(
@@ -124,10 +275,16 @@ export class Generator {
     variablesMap: Map<string, llvm.Value>,
     isGlobal: boolean = false
   ): void {
-    const varName = node.token.value!
+    const varName = this.assertExists(
+      node.token.value,
+      'generateVariableDefinition'
+    )
 
     if (variablesMap.has(varName)) {
-      this.error = new GeneratorError(`Variable ${varName} already defined`)
+      Logger.logErrors([
+        new GeneratorError(`Variable ${varName} already defined`),
+      ])
+
       process.exit(1)
     }
 
@@ -171,14 +328,11 @@ export class Generator {
   private generateReturn(
     node: ReturnNode,
     localVariablesMap: Map<string, llvm.Value>
-  ): llvm.Value | undefined {
-    const expressionValue = this.generateExpression(
-      node.expression,
-      localVariablesMap
+  ): llvm.Value {
+    const expressionValue = this.assertExists(
+      this.generateExpression(node.expression, localVariablesMap),
+      'generateReturn'
     )
-    if (!expressionValue) {
-      return undefined
-    }
 
     return this.Builder.CreateRet(expressionValue)
   }
@@ -190,9 +344,6 @@ export class Generator {
     mergeBlock?: llvm.BasicBlock
   ): void {
     const condition = this.generateExpression(node.condition, variablesMap)
-    if (!condition) {
-      return
-    }
 
     const thenBlock = llvm.BasicBlock.Create(
       this.Context,
@@ -215,7 +366,7 @@ export class Generator {
     this.Builder.SetInsertPoint(thenBlock)
     this.generateFunctionBody(node.thenStatements, variablesMap)
 
-    if (!this.Builder.GetInsertBlock()!.getTerminator()) {
+    if (!this.Builder.GetInsertBlock()?.getTerminator()) {
       this.Builder.CreateBr(endifBlock)
       branchedToEndif = true
     }
@@ -224,7 +375,7 @@ export class Generator {
       this.Builder.SetInsertPoint(elseBlock)
       this.generateFunctionBody(node.elseStatements, variablesMap)
 
-      if (!this.Builder.GetInsertBlock()!.getTerminator()) {
+      if (!this.Builder.GetInsertBlock()?.getTerminator()) {
         this.Builder.CreateBr(endifBlock)
         branchedToEndif = true
       }
@@ -253,7 +404,7 @@ export class Generator {
   }
 
   private generateFunctionBody(
-    body: (StatementNode | IfStatementNode)[],
+    body: StatementNode[],
     variablesMap: Map<string, llvm.Value>
   ): void {
     for (const statement of body) {
@@ -266,9 +417,15 @@ export class Generator {
           )
         } else if (statement.variant instanceof ReturnNode) {
           this.generateReturn(statement.variant, variablesMap)
+        } else if (statement.variant instanceof ExpresssionStatementNode) {
+          this.generateExpression(statement.variant.expression, variablesMap)
+        } else if (statement.variant instanceof IfStatementNode) {
+          this.generateIfStatement(statement.variant, variablesMap)
+        } else if (statement.variant instanceof ForLoopNode) {
+          this.generateForLoop(statement.variant, variablesMap)
+        } else if (statement.variant instanceof AssignmentNode) {
+          this.generateAssignment(statement.variant, variablesMap)
         }
-      } else if (statement instanceof IfStatementNode) {
-        this.generateIfStatement(statement, variablesMap)
       }
     }
   }
@@ -279,10 +436,12 @@ export class Generator {
     const variablesMap = new Map<string, llvm.Value>()
 
     const functionName = node.proto.name
-    const functionType = llvm.FunctionType.get(
-      llvm.Type.getInt32Ty(this.Context),
-      false
-    )
+    const int32Type = llvm.Type.getInt32Ty(this.Context)
+
+    // TODO: implement types
+    const paramTypes: llvm.Type[] = node.proto.args.map(() => int32Type)
+
+    const functionType = llvm.FunctionType.get(int32Type, paramTypes, false)
     const _function = llvm.Function.Create(
       functionType,
       llvm.Function.LinkageTypes.ExternalLinkage,
@@ -292,10 +451,22 @@ export class Generator {
     const entryBlock = llvm.BasicBlock.Create(this.Context, 'entry', _function)
     this.Builder.SetInsertPoint(entryBlock)
 
+    let paramIndex = 0
+    for (const paramName of node.proto.args) {
+      const param = _function.getArg(paramIndex)
+      param.setName(paramName)
+
+      const alloca = this.Builder.CreateAlloca(int32Type, null, paramName)
+      this.Builder.CreateStore(param, alloca)
+      variablesMap.set(paramName, alloca)
+
+      paramIndex++
+    }
+
     this.generateFunctionBody(node.body, variablesMap)
   }
 
-  public generateProgram(program: ProgramNode): string | undefined {
+  public generateProgram(program: ProgramNode): string {
     const returnType = llvm.Type.getInt32Ty(this.Context)
     const functionType = llvm.FunctionType.get(returnType, false)
     this.Function = llvm.Function.Create(
@@ -313,10 +484,16 @@ export class Generator {
     this.Builder.SetInsertPoint(entryBlock)
 
     for (const globalVariableDefinition of program.globalVariables) {
-      const varName = globalVariableDefinition.token.value!
+      const varName = this.assertExists(
+        globalVariableDefinition.token.value,
+        'generateProgram -- varName'
+      )
+
       if (this.GlobalVariablesMap.has(varName)) {
-        this.error = new GeneratorError(`Variable ${varName} already defined`)
-        return undefined
+        Logger.logErrors([
+          new GeneratorError(`Variable ${varName} already defined`),
+        ])
+        process.exit(1)
       }
 
       const int32Type = llvm.Type.getInt32Ty(this.Context)
@@ -332,9 +509,14 @@ export class Generator {
     }
 
     for (const globalVariableDefinition of program.globalVariables) {
-      if (this.error) break
-      const varName = globalVariableDefinition.token.value!
-      const variable = this.GlobalVariablesMap.get(varName)!
+      const varName = this.assertExists(
+        globalVariableDefinition.token.value,
+        'generateProgram -- varName'
+      )
+      const variable = this.assertExists(
+        this.GlobalVariablesMap.get(varName),
+        'generateProgram -- variable'
+      )
 
       const localMapForExpression = new Map<string, llvm.Value>()
       const expressionValue = this.generateExpression(
@@ -347,21 +529,20 @@ export class Generator {
       }
     }
 
-    if (!program.mainFunction) {
-      this.error = new GeneratorError('Main function not found')
-      return undefined
-    }
-
-    const mainVariablesMap = new Map<string, llvm.Value>()
-    this.generateFunctionBody(program.mainFunction.body, mainVariablesMap)
-
     for (const functionDefinition of program.functions) {
       this.generateFunction(functionDefinition)
     }
 
-    if (this.error) {
-      return undefined
+    if (!program.mainFunction) {
+      Logger.logErrors([new GeneratorError('Main function not found')])
+      process.exit(1)
     }
+
+    const mainEntryBlock = this.Function!.getEntryBlock()
+    this.Builder.SetInsertPoint(mainEntryBlock)
+
+    const mainVariablesMap = new Map<string, llvm.Value>()
+    this.generateFunctionBody(program.mainFunction.body, mainVariablesMap)
 
     return this.Module.print()
   }

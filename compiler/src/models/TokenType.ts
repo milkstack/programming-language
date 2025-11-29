@@ -30,6 +30,9 @@ export enum TokenType {
   LessThanEqual = 'LessThanEqual',
   Equal = 'Equal',
   NotEqual = 'NotEqual',
+  For = 'For',
+  PlusPlus = 'PlusPlus',
+  MinusMinus = 'MinusMinus',
 }
 
 const TOKEN_TYPE_MAP = new Map<string, TokenType>([
@@ -39,6 +42,7 @@ const TOKEN_TYPE_MAP = new Map<string, TokenType>([
   ['if', TokenType.If],
   ['else', TokenType.Else],
   ['elseif', TokenType.ElseIf],
+  ['for', TokenType.For],
   ['(', TokenType.LeftParen],
   [')', TokenType.RightParen],
   ['[', TokenType.LeftBracket],
@@ -62,6 +66,8 @@ export const DOUBLE_CHAR_TOKEN_TYPE_MAP = new Map<string, TokenType>([
   ['<=', TokenType.LessThanEqual],
   ['==', TokenType.Equal],
   ['!=', TokenType.NotEqual],
+  ['++', TokenType.PlusPlus],
+  ['--', TokenType.MinusMinus],
 ])
 
 export function tokenTypeFromString(str: string): TokenType {

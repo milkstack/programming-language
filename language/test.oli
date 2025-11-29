@@ -1,23 +1,13 @@
-let x = 7;
-let xz = 6;
-
 fn main () {
 
-    let y = 5;
+    let x = 0;
 
-    if(x <= xz) {
-        return 0;
-    } else if (1 > 5) {
-
-        return 3;
-    } else if (4 > 1) {
-        return 4;
-    }
-    
-    else {
-        return xz * (10 - (x - xz));
+    for (i = 0; i < 10; i++) {
+        x = x + 2;
     }
 
+    x = x / 2;
 
-    
+    return x;
 }
+

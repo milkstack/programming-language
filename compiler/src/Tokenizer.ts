@@ -116,6 +116,37 @@ export class Tokenizer {
     return DOUBLE_CHAR_TOKEN_TYPE_MAP.get(doubleChar)
   }
 
+  // pretty hacky. Turns i++ into i = i + 1
+  private handlePlusPlus(tokenType: TokenType) {
+    const identifier = this.tokens[this.tokens.length - 1]
+
+    this.tokens.push(
+      new Token(TokenType.Assign, this.lineNumberCursor, this.characterCursor)
+    )
+
+    this.tokens.push(identifier)
+
+    this.tokens.push(
+      new Token(
+        tokenType === TokenType.PlusPlus ? TokenType.Plus : TokenType.Minus,
+        this.lineNumberCursor,
+        this.characterCursor
+      )
+    )
+
+    this.tokens.push(
+      new Token(
+        TokenType.IntegerLiteral,
+        this.lineNumberCursor,
+        this.characterCursor,
+        '1'
+      )
+    )
+
+    this.consumeChar()
+    this.consumeChar()
+  }
+
   public tokenize(): [Token[], LexicalError[]] {
     while (this.peek()) {
       const character = this.peek()!
@@ -142,6 +173,14 @@ export class Tokenizer {
       const doubleCharTokenType = this.checkForDoubleCharToken()
 
       if (doubleCharTokenType) {
+        if (
+          doubleCharTokenType === TokenType.PlusPlus ||
+          doubleCharTokenType === TokenType.MinusMinus
+        ) {
+          this.handlePlusPlus(doubleCharTokenType)
+          continue
+        }
+
         const token = new Token(
           doubleCharTokenType,
           this.lineNumberCursor,

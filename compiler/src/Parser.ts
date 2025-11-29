@@ -1,4 +1,4 @@
-import { Logger } from './Logger'
+import { Logger } from './utils/Logger'
 import { OPERATORS_MAP } from './constants/Operators'
 import { ParseError } from './models/ParseError'
 import { Token } from './models/Token'
@@ -19,6 +19,8 @@ import { ReturnNode } from './models/nodes/ReturnNode'
 import { StatementNode } from './models/nodes/StatementNode'
 import { TerminatorNode } from './models/nodes/TerminatorNode'
 import { VariableDefinitionNode } from './models/nodes/VariableDefinitionNode'
+import { WhileLoopNode } from './models/nodes/WhileLoopNode'
+import { ErrorHandler } from './utils/ErrorHandler'
 
 export class Parser {
   private tokens: Token[]
@@ -57,7 +59,7 @@ export class Parser {
         new ParseError(`Expected ${requiredType}, but got EOF`),
       ])
 
-      process.exit(1)
+      ErrorHandler.exitOrThrow(1)
     }
 
     if (requiredType && requiredType !== token.tokenType) {
@@ -67,7 +69,7 @@ export class Parser {
           token?.lineNumber
         ),
       ])
-      process.exit(1)
+      ErrorHandler.exitOrThrow(1)
     }
 
     return token
@@ -295,7 +297,7 @@ export class Parser {
           ),
         ])
 
-        process.exit(1)
+        ErrorHandler.exitOrThrow(1)
       }
     }
     return args
@@ -311,6 +313,19 @@ export class Parser {
     this.consume(TokenType.RightParen)
 
     return new FunctionCallNode(identifierToken, args)
+  }
+
+  private parseWhileLoop(): WhileLoopNode {
+    this.consume(TokenType.While)
+    this.consume(TokenType.LeftParen)
+
+    const condition = this.parseExpression()
+
+    this.consume(TokenType.RightParen)
+
+    const body = this.parseBody()
+
+    return new WhileLoopNode(condition, body)
   }
 
   private parseStatement(): StatementNode {
@@ -334,6 +349,10 @@ export class Parser {
 
     if (token.tokenType === TokenType.For) {
       return new StatementNode(this.parseForLoop())
+    }
+
+    if (token.tokenType === TokenType.While) {
+      return new StatementNode(this.parseWhileLoop())
     }
 
     // last option. Exit here if we don't find an identifier
@@ -390,7 +409,7 @@ export class Parser {
         ),
       ])
 
-      process.exit(1)
+      ErrorHandler.exitOrThrow(1)
     }
 
     return programNode

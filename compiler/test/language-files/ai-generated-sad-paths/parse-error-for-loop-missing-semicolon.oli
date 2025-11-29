@@ -1,0 +1,7 @@
+fn main() {
+    for (let i = 0; i < 5 i++) {
+        let x = i;
+    }
+    return 0;
+}
+

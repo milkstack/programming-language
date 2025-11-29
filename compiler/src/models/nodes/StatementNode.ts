@@ -4,6 +4,7 @@ import { ForLoopNode } from './ForLoopNode'
 import { IfStatementNode } from './IfStatementNode'
 import { ReturnNode } from './ReturnNode'
 import { VariableDefinitionNode } from './VariableDefinitionNode'
+import { WhileLoopNode } from './WhileLoopNode'
 
 export class StatementNode {
   public variant:
@@ -13,6 +14,7 @@ export class StatementNode {
     | IfStatementNode
     | ForLoopNode
     | AssignmentNode
+    | WhileLoopNode
 
   constructor(
     variant:
@@ -22,6 +24,7 @@ export class StatementNode {
       | IfStatementNode
       | ForLoopNode
       | AssignmentNode
+      | WhileLoopNode
   ) {
     this.variant = variant
   }

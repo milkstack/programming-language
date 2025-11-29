@@ -1,0 +1,4 @@
+fn helper() {
+    return 5;
+}
+

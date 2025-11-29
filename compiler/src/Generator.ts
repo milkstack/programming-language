@@ -16,7 +16,9 @@ import { ExpresssionStatementNode } from './models/nodes/ExpressionStatementNode
 import { FunctionCallNode } from './models/nodes/FunctionCallNode'
 import { ForLoopNode } from './models/nodes/ForLoopNode'
 import { AssignmentNode } from './models/nodes/AssignmentNode'
-import { Logger } from './Logger'
+import { Logger } from './utils/Logger'
+import { WhileLoopNode } from './models/nodes/WhileLoopNode'
+import { ErrorHandler } from './utils/ErrorHandler'
 
 export class Generator {
   private GlobalVariablesMap: Map<string, llvm.Value> = new Map()
@@ -43,7 +45,8 @@ export class Generator {
       Logger.logErrors([
         new GeneratorError(`Value doesn't exist at ${location}`),
       ])
-      process.exit(1)
+
+      ErrorHandler.exitOrThrow(1)
     }
 
     return value
@@ -87,7 +90,7 @@ export class Generator {
           Logger.logErrors([
             new GeneratorError(`Function ${functionName} argument not found`),
           ])
-          process.exit(1)
+          ErrorHandler.exitOrThrow(1)
         }
         return arg !== undefined
       })
@@ -98,10 +101,86 @@ export class Generator {
           `Mismatched argument length ${args.length} vs ${node.args.length}`
         ),
       ])
-      process.exit(1)
+      ErrorHandler.exitOrThrow(1)
     }
 
     return this.Builder.CreateCall(_function, args)
+  }
+
+  // convert non comparison expressions into bool(x > 1)
+  private convertConditionToBoolean(rawCondition: llvm.Value): llvm.Value {
+    const condType = rawCondition.getType()
+    if (condType.isIntegerTy(1)) {
+      return rawCondition
+    } else {
+      const int32Type = llvm.Type.getInt32Ty(this.Context)
+      const zero = llvm.ConstantInt.get(int32Type, 0)
+      return this.Builder.CreateICmpNE(rawCondition, zero)
+    }
+  }
+
+  private generateWhileLoop(
+    node: WhileLoopNode,
+    localVariablesMap: Map<string, llvm.Value>
+  ): void {
+    // get our current building block. this is something like our current "cursor" as we write out the llvm ir
+    const currentBlock = this.assertExists(
+      this.Builder.GetInsertBlock(),
+      'generateWhileLoop -- currentBlock'
+    )
+    // get the function that our cursor is inside of
+    const _function = this.assertExists(
+      currentBlock.getParent(),
+      'generateWhileLoop -- _function'
+    )
+
+    // create, but don't write out basic blocks for:
+    // loop condition
+    // the body of our loop
+    // where to "release" the program back to when the loop ends
+
+    const loopCondBB = llvm.BasicBlock.Create(
+      this.Context,
+      'while.cond',
+      _function
+    )
+    const loopBodyBB = llvm.BasicBlock.Create(
+      this.Context,
+      'while.body',
+      _function
+    )
+
+    const loopEndBB = llvm.BasicBlock.Create(
+      this.Context,
+      'while.end',
+      _function
+    )
+
+    // create a logical branch and set our cursor to it
+    this.Builder.CreateBr(loopCondBB)
+    this.Builder.SetInsertPoint(loopCondBB)
+
+    const rawCondition = this.assertExists(
+      this.generateExpression(node.condition, localVariablesMap),
+      'generateWhileLoop -- rawCondition'
+    )
+    const condition = this.convertConditionToBoolean(rawCondition)
+
+    // creates an actual "check" for the condition
+    this.Builder.CreateCondBr(condition, loopBodyBB, loopEndBB)
+
+    // populates the body of of the loop
+    this.Builder.SetInsertPoint(loopBodyBB)
+    this.generateFunctionBody(node.body, localVariablesMap)
+
+    // once we reach the end of the body
+    // tie the end of the body to the beginning of the loop conditionally
+    if (!this.Builder.GetInsertBlock()?.getTerminator()) {
+      this.Builder.CreateBr(loopCondBB)
+    }
+
+    // set our cursor back to tha "after loop" section
+    this.Builder.SetInsertPoint(loopEndBB)
   }
 
   private generateForLoop(
@@ -110,11 +189,11 @@ export class Generator {
   ): void {
     const currentBlock = this.assertExists(
       this.Builder.GetInsertBlock(),
-      'generateForLoop'
+      'generateForLoop -- currentBlock'
     )
     const _function = this.assertExists(
-      currentBlock?.getParent(),
-      'generateForLoop'
+      currentBlock.getParent(),
+      'generateForLoop -- _function'
     )
 
     this.generateVariableDefinition(
@@ -148,16 +227,7 @@ export class Generator {
       'generateForLoop -- rawCondition'
     )
 
-    // convert non comparison expressions into bool(x > 1)
-    const condType = rawCondition.getType()
-    let condition: llvm.Value
-    if (condType.isIntegerTy(1)) {
-      condition = rawCondition
-    } else {
-      const int32Type = llvm.Type.getInt32Ty(this.Context)
-      const zero = llvm.ConstantInt.get(int32Type, 0)
-      condition = this.Builder.CreateICmpNE(rawCondition, zero)
-    }
+    const condition = this.convertConditionToBoolean(rawCondition)
 
     this.Builder.CreateCondBr(condition, loopBodyBB, loopEndBB)
 
@@ -197,7 +267,7 @@ export class Generator {
       new GeneratorError(`Unsupported expression type: ${node.variant}`),
     ])
 
-    process.exit(1)
+    ErrorHandler.exitOrThrow(1)
   }
 
   private generateBinaryExpression(
@@ -242,7 +312,7 @@ export class Generator {
             `Unsupported operator: ${node.operator.tokenType}`
           ),
         ])
-        process.exit(1)
+        ErrorHandler.exitOrThrow(1)
     }
   }
 
@@ -285,7 +355,7 @@ export class Generator {
         new GeneratorError(`Variable ${varName} already defined`),
       ])
 
-      process.exit(1)
+      ErrorHandler.exitOrThrow(1)
     }
 
     let variable: llvm.Value
@@ -423,6 +493,8 @@ export class Generator {
           this.generateIfStatement(statement.variant, variablesMap)
         } else if (statement.variant instanceof ForLoopNode) {
           this.generateForLoop(statement.variant, variablesMap)
+        } else if (statement.variant instanceof WhileLoopNode) {
+          this.generateWhileLoop(statement.variant, variablesMap)
         } else if (statement.variant instanceof AssignmentNode) {
           this.generateAssignment(statement.variant, variablesMap)
         }
@@ -493,7 +565,7 @@ export class Generator {
         Logger.logErrors([
           new GeneratorError(`Variable ${varName} already defined`),
         ])
-        process.exit(1)
+        ErrorHandler.exitOrThrow(1)
       }
 
       const int32Type = llvm.Type.getInt32Ty(this.Context)
@@ -535,7 +607,7 @@ export class Generator {
 
     if (!program.mainFunction) {
       Logger.logErrors([new GeneratorError('Main function not found')])
-      process.exit(1)
+      ErrorHandler.exitOrThrow(1)
     }
 
     const mainEntryBlock = this.Function!.getEntryBlock()

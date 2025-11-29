@@ -4,11 +4,21 @@ parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 
 cd "$parent_path"
 
-npx ts-node src/main.ts
+mkdir -p output
+rm -f output/test.ll output/test
 
-clang output/output.ll -o output/output
+npm start || exit 1
 
-./output/output
+clang -w output/test.ll -o output/test
+clang_exit=$?
+if [ ! -f output/test ]; then
+    echo "Error: Clang failed to compile ll -> binary"
+    exit 1
+fi
+
+
+echo "Running outputted binary"
+./output/test
 
 echo $?
 # echo "Output:"

@@ -1,0 +1,188 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`Language Files Compilation IR Generation should generate valid IR for assignment 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 2, i32* %x, align 4
+  store i32 5, i32* %x, align 4
+  %x1 = load i32, i32* %x, align 4
+  ret i32 %x1
+}
+"
+`;
+
+exports[`Language Files Compilation IR Generation should generate valid IR for binaryExpression 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+define i32 @main() {
+entry:
+  ret i32 8
+}
+"
+`;
+
+exports[`Language Files Compilation IR Generation should generate valid IR for expression 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+define i32 @main() {
+entry:
+  ret i32 7
+}
+"
+`;
+
+exports[`Language Files Compilation IR Generation should generate valid IR for expressionStatement 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 2, i32* %x, align 4
+  %x1 = load i32, i32* %x, align 4
+  %0 = add i32 %x1, 1
+  %x2 = load i32, i32* %x, align 4
+  ret i32 %x2
+}
+"
+`;
+
+exports[`Language Files Compilation IR Generation should generate valid IR for forLoop 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 0, i32* %x, align 4
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %for.cond
+
+for.cond:                                         ; preds = %for.iter, %entry
+  %i1 = load i32, i32* %i, align 4
+  %0 = icmp slt i32 %i1, 4
+  br i1 %0, label %for.body, label %for.end
+
+for.body:                                         ; preds = %for.cond
+  %i2 = load i32, i32* %i, align 4
+  store i32 %i2, i32* %x, align 4
+  br label %for.iter
+
+for.iter:                                         ; preds = %for.body
+  %i3 = load i32, i32* %i, align 4
+  %1 = add i32 %i3, 1
+  store i32 %1, i32* %i, align 4
+  br label %for.cond
+
+for.end:                                          ; preds = %for.cond
+  %x4 = load i32, i32* %x, align 4
+  ret i32 %x4
+}
+"
+`;
+
+exports[`Language Files Compilation IR Generation should generate valid IR for function 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 2, i32* %x, align 4
+  %y = alloca i32, align 4
+  store i32 4, i32* %y, align 4
+  %z = alloca i32, align 4
+  %x1 = load i32, i32* %x, align 4
+  %y2 = load i32, i32* %y, align 4
+  %0 = call i32 @other(i32 %x1, i32 %y2)
+  store i32 %0, i32* %z, align 4
+  %z3 = load i32, i32* %z, align 4
+  ret i32 %z3
+}
+
+define i32 @other(i32 %a, i32 %b) {
+entry:
+  %a1 = alloca i32, align 4
+  store i32 %a, i32* %a1, align 4
+  %b2 = alloca i32, align 4
+  store i32 %b, i32* %b2, align 4
+  %a3 = load i32, i32* %a1, align 4
+  %b4 = load i32, i32* %b2, align 4
+  %0 = add i32 %a3, %b4
+  ret i32 %0
+}
+"
+`;
+
+exports[`Language Files Compilation IR Generation should generate valid IR for ifStatement 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 5, i32* %x, align 4
+  %x1 = load i32, i32* %x, align 4
+  %0 = icmp sgt i32 %x1, 6
+  br i1 %0, label %then, label %else
+
+then:                                             ; preds = %entry
+  store i32 0, i32* %x, align 4
+  br label %endif
+
+else:                                             ; preds = %entry
+  br label %endif
+
+endif:                                            ; preds = %else, %then
+  %x2 = load i32, i32* %x, align 4
+  %1 = icmp sgt i32 %x2, 1
+  br i1 %1, label %then3, label %else4
+
+then3:                                            ; preds = %endif
+  store i32 2, i32* %x, align 4
+  br label %endif5
+
+else4:                                            ; preds = %endif
+  br label %endif5
+
+endif5:                                           ; preds = %else4, %then3
+  %x6 = load i32, i32* %x, align 4
+  ret i32 %x6
+}
+"
+`;
+
+exports[`Language Files Compilation IR Generation should generate valid IR for whileLoop 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 0, i32* %x, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %while.body, %entry
+  %x1 = load i32, i32* %x, align 4
+  %0 = icmp slt i32 %x1, 11
+  br i1 %0, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %x2 = load i32, i32* %x, align 4
+  %1 = add i32 %x2, 1
+  store i32 %1, i32* %x, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %x3 = load i32, i32* %x, align 4
+  ret i32 %x3
+}
+"
+`;

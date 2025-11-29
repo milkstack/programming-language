@@ -1,0 +1,7 @@
+fn main() {
+    while x < 5 {
+        let x = 1;
+    }
+    return 0;
+}
+

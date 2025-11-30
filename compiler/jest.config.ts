@@ -5,4 +5,5 @@ export default {
   testMatch: ['**/*.test.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts'],
+  globalTeardown: '<rootDir>/test/globalTeardown.ts',
 }

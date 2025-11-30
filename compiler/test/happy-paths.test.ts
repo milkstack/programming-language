@@ -45,26 +45,19 @@ describe('Language Files Compilation', () => {
     })
   })
 
-  afterAll(() => {
-    if (fs.existsSync(testOutputDir)) {
-      fs.rmSync(testOutputDir, { recursive: true, force: true })
-    }
-  })
-
   describe('IR Generation', () => {
     it.each(languageFiles)('should generate valid IR for %s', (fileName) => {
-      const [irPath, returnVal] = compileAndRun(fileName)
+      const { irPath, returnVal } = compileAndRun(fileName, 'happy-paths')
       const ir = fs.readFileSync(irPath, 'utf-8')
 
-      // Snapshot test for IR content
       expect(ir).toMatchSnapshot()
 
       const expected = expectedResultsMapping[fileName]
       if (expected !== null && expected !== undefined) {
         expect(returnVal).toBe(expected)
       } else {
-        fail(
-          `No expected results mapping found for "${fileName}". Please add an entry to expectedResults in test-all-files.ts for this file, including the expected IR strings and return value.`
+        throw new Error(
+          `No expected results mapping found for "${fileName}". Please add an entry to expectedResultsMapping in happy-paths.test.ts for this file, including the expected return value.`
         )
       }
     })

@@ -5,7 +5,6 @@
   "main": "src/main.ts",
   "scripts": {
     "start": "ts-node src/command-line-runner.ts ../language/test.oli ./output",
-    "build": "tsc",
     "test": "NODE_OPTIONS='--no-warnings' jest"
   },
   "devDependencies": {

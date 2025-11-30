@@ -6,6 +6,7 @@ fn main () {
     while (x < 9) {
         x++;
         
+        print(x);
 
         if (x > 4) {
             continue;

@@ -4,6 +4,10 @@ exports[`Language Files Compilation IR Generation should generate valid IR for a
 "; ModuleID = 'main'
 source_filename = "main"
 
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
 define i32 @main() {
 entry:
   %x = alloca i32, align 4
@@ -19,6 +23,10 @@ exports[`Language Files Compilation IR Generation should generate valid IR for b
 "; ModuleID = 'main'
 source_filename = "main"
 
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
 define i32 @main() {
 entry:
   ret i32 8
@@ -29,6 +37,10 @@ entry:
 exports[`Language Files Compilation IR Generation should generate valid IR for break 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
@@ -100,6 +112,10 @@ endif8:                                           ; preds = %else7
 exports[`Language Files Compilation IR Generation should generate valid IR for continue 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
@@ -178,6 +194,10 @@ exports[`Language Files Compilation IR Generation should generate valid IR for e
 "; ModuleID = 'main'
 source_filename = "main"
 
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
 define i32 @main() {
 entry:
   ret i32 7
@@ -188,6 +208,10 @@ entry:
 exports[`Language Files Compilation IR Generation should generate valid IR for expressionStatement 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
@@ -204,6 +228,10 @@ entry:
 exports[`Language Files Compilation IR Generation should generate valid IR for forLoop 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
@@ -240,6 +268,10 @@ exports[`Language Files Compilation IR Generation should generate valid IR for f
 "; ModuleID = 'main'
 source_filename = "main"
 
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
 define i32 @main() {
 entry:
   %x = alloca i32, align 4
@@ -272,6 +304,10 @@ entry:
 exports[`Language Files Compilation IR Generation should generate valid IR for ifStatement 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
@@ -310,6 +346,10 @@ endif5:                                           ; preds = %else4, %then3
 exports[`Language Files Compilation IR Generation should generate valid IR for nestedWhileLoops 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:
@@ -357,6 +397,10 @@ while.end6:                                       ; preds = %while.cond4
 exports[`Language Files Compilation IR Generation should generate valid IR for whileLoop 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
 
 define i32 @main() {
 entry:

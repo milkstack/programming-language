@@ -21,6 +21,7 @@ import { WhileLoopNode } from './models/nodes/WhileLoopNode'
 import { ErrorHandler } from './utils/ErrorHandler'
 import { BreakStatementNode } from './models/nodes/BreakStatementNode'
 import { ContinueStatementNode } from './models/nodes/ContinueStatementNode'
+import { RESERVED_NAMES } from './constants/ReservedNames'
 
 export class Generator {
   private GlobalVariablesMap: Map<string, llvm.Value> = new Map()
@@ -32,10 +33,44 @@ export class Generator {
   private loopEndBlocks: llvm.BasicBlock[] = []
   private loopContinueBlocks: llvm.BasicBlock[] = []
 
+  private printfFunction: llvm.Function | null = null
+  private printFormatString: llvm.GlobalVariable | null = null
+
   constructor() {
     this.Context = new llvm.LLVMContext()
     this.Module = new llvm.Module('main', this.Context)
     this.Builder = new llvm.IRBuilder(this.Context)
+
+    this.createCLibPrintF()
+  }
+
+  // apparently the only(?) way to accomplish printing using LLVM is to leverage printf from C
+  private createCLibPrintF(): void {
+    const int32Type = llvm.Type.getInt32Ty(this.Context)
+    const int8PtrType = llvm.Type.getInt8PtrTy(this.Context)
+    const printfType = llvm.FunctionType.get(int32Type, [int8PtrType], true) // true = variadic
+
+    this.printfFunction = llvm.Function.Create(
+      printfType,
+      llvm.Function.LinkageTypes.ExternalLinkage,
+      'printf',
+      this.Module
+    )
+
+    const formatString = '%d\n'
+    const formatStringType = llvm.ArrayType.get(
+      llvm.Type.getInt8Ty(this.Context),
+      formatString.length + 1 // +1 for null terminator
+    )
+
+    this.printFormatString = new llvm.GlobalVariable(
+      this.Module,
+      formatStringType,
+      true, // isConstant
+      llvm.GlobalValue.LinkageTypes.PrivateLinkage,
+      llvm.ConstantDataArray.getString(this.Context, formatString, true), // true = null-terminated
+      'print_format'
+    )
   }
 
   private generateIntegerLiteral(node: IntegerLiteralNode): llvm.ConstantInt {
@@ -83,6 +118,11 @@ export class Generator {
       node.token.value,
       'generateFunctionCall -- functionName'
     )!
+
+    if (functionName === 'print') {
+      return this.generatePrint(node, localVariablesMap)
+    }
+
     const _function = this.assertExists(
       this.Module.getFunction(functionName),
       'generateFunctionCall -- function'
@@ -264,6 +304,38 @@ export class Generator {
     this.Builder.SetInsertPoint(loopEndBB)
   }
 
+  private generatePrint(
+    node: FunctionCallNode,
+    localVariablesMap: Map<string, llvm.Value>
+  ) {
+    if (node.args.length !== 1) {
+      Logger.logErrors([
+        new GeneratorError(
+          `print() expects exactly 1 argument, got ${node.args.length}`
+        ),
+      ])
+      ErrorHandler.exitOrThrow(1)
+    }
+
+    const value = this.assertExists(
+      this.generateExpression(node.args[0], localVariablesMap),
+      'generateFunctionCall -- print value'
+    )
+
+    const int8PtrType = llvm.Type.getInt8PtrTy(this.Context)
+    const formatStringPtr = this.Builder.CreateBitCast(
+      this.printFormatString!,
+      int8PtrType,
+      'format_string_ptr'
+    )
+
+    return this.Builder.CreateCall(
+      this.printfFunction!,
+      [formatStringPtr, value],
+      'print_call'
+    )
+  }
+
   private generateExpression(
     node: ExpressionNode,
     localVariablesMap: Map<string, llvm.Value>
@@ -369,6 +441,15 @@ export class Generator {
       node.token.value,
       'generateVariableDefinition'
     )
+
+    if (RESERVED_NAMES.includes(varName)) {
+      Logger.logErrors([
+        new GeneratorError(
+          `'${varName}' is a reserved name and cannot be used as a variable name`
+        ),
+      ])
+      ErrorHandler.exitOrThrow(1)
+    }
 
     if (variablesMap.has(varName)) {
       Logger.logErrors([
@@ -559,6 +640,16 @@ export class Generator {
     const variablesMap = new Map<string, llvm.Value>()
 
     const functionName = node.proto.name
+
+    if (RESERVED_NAMES.includes(functionName)) {
+      Logger.logErrors([
+        new GeneratorError(
+          `'${functionName}' is a reserved name and cannot be used as a function name`
+        ),
+      ])
+      ErrorHandler.exitOrThrow(1)
+    }
+
     const int32Type = llvm.Type.getInt32Ty(this.Context)
 
     // TODO: implement types

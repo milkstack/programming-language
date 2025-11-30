@@ -5,28 +5,12 @@ import { execSync } from 'child_process'
 const compilerDir = path.resolve(__dirname, '..')
 export const testOutputDir = path.join(compilerDir, 'test-output')
 
-export function getLanguageFilePath(): string {
-  const testPath = expect.getState().testPath
-  if (!testPath) {
-    throw new Error('Could not determine test file path')
-  }
-
-  const baseName = path.basename(testPath, '.test.ts')
-
-  return path.join(
-    path.dirname(testPath),
-    'language-files',
-    'happy-paths',
-    `${baseName}.oli`
-  )
-}
-
-export function compileToIR(fileName: string): string {
+export function compileToIR(fileName: string, subpath?: string): string {
   const inputPath = path.join(
     __dirname,
     '..',
     'language-files',
-    'happy-paths',
+    subpath ?? '',
     `${fileName}.oli`
   )
 
@@ -35,7 +19,7 @@ export function compileToIR(fileName: string): string {
   return path.join(testOutputDir, `${fileName}.ll`)
 }
 
-export function runIr(fileName: string): number {
+export function runIr(fileName: string): [number, string] {
   const irPath = path.join(testOutputDir, `${fileName}.ll`)
   const binaryPath = path.join(testOutputDir, fileName)
 
@@ -45,24 +29,28 @@ export function runIr(fileName: string): number {
   })
 
   try {
-    execSync(binaryPath, {
+    const output = execSync(binaryPath, {
       stdio: 'pipe',
+      encoding: 'utf-8',
       cwd: compilerDir,
     })
-    return 0
+    return [0, output]
   } catch (error: any) {
     // have to do it this way to allow us to test with non-zero exit codes
     if (error.status !== null && error.status !== undefined) {
-      return error.status
+      return [error.status, error.stdout || '']
     }
 
     throw new Error(`Failed to execute binary: ${error.message}`)
   }
 }
 
-export function compileAndRun(fileName: string): [string, number] {
-  const irPath = compileToIR(fileName)
-  const returnVal = runIr(fileName)
+export function compileAndRun(
+  fileName: string,
+  subpath?: string
+): { irPath: string; returnVal: number; stdout: string } {
+  const irPath = compileToIR(fileName, subpath)
+  const [returnVal, stdout] = runIr(fileName)
 
-  return [irPath, returnVal]
+  return { irPath, returnVal, stdout }
 }

@@ -1,0 +1,8 @@
+fn test(print) {
+    return print;
+}
+
+fn main() {
+    return 0;
+}
+

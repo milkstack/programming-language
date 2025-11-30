@@ -1,0 +1,4 @@
+fn main() {
+    let print = 42;
+    return 0;
+}

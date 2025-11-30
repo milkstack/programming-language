@@ -1,5 +1,6 @@
 import { Logger } from './utils/Logger'
 import { OPERATORS_MAP } from './constants/Operators'
+import { RESERVED_NAMES } from './constants/ReservedNames'
 import { ParseError } from './models/ParseError'
 import { Token } from './models/Token'
 import { TokenType } from './models/TokenType'
@@ -29,6 +30,24 @@ export class Parser {
 
   constructor(tokens: Token[]) {
     this.tokens = tokens
+  }
+
+  private validateIdentifierNotReserved(
+    identifierToken: Token,
+    context: string
+  ): void {
+    if (
+      identifierToken.value &&
+      RESERVED_NAMES.includes(identifierToken.value)
+    ) {
+      Logger.logErrors([
+        new ParseError(
+          `'${identifierToken.value}' is a reserved name and cannot be used as a ${context}`,
+          identifierToken.lineNumber
+        ),
+      ])
+      ErrorHandler.exitOrThrow(1)
+    }
   }
 
   private checkIsOperator(token: Token | undefined): boolean {
@@ -179,6 +198,7 @@ export class Parser {
 
     while (this.peek() && this.peek()!.tokenType === TokenType.Identifier) {
       const argToken = this.consume(TokenType.Identifier)
+      this.validateIdentifierNotReserved(argToken, 'function parameter name')
       args.push(argToken.value!)
 
       if (this.peekOrExit().tokenType === TokenType.Comma) {
@@ -207,6 +227,7 @@ export class Parser {
 
   private parseFunctionPrototype(): PrototypeNode {
     const nameToken = this.consume(TokenType.Identifier)
+    this.validateIdentifierNotReserved(nameToken, 'function name')
 
     this.consume(TokenType.LeftParen)
 
@@ -241,6 +262,7 @@ export class Parser {
     if (!allowNoLet) this.consume(TokenType.Let)
 
     const identifierToken = this.consume(TokenType.Identifier)
+    this.validateIdentifierNotReserved(identifierToken, 'variable name')
 
     this.consume(TokenType.Assign)
 

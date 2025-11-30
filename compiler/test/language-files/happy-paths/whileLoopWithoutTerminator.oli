@@ -1,0 +1,11 @@
+fn main() {
+  let x = 0;
+  
+  while (x < 5) {
+    x++;
+    // No explicit break/return - should hit terminator check
+  }
+  
+  return x;
+}
+

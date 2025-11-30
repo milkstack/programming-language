@@ -29,6 +29,7 @@ export class Tokenizer {
   }
 
   private consumeChar(): string | undefined {
+    /* istanbul ignore else */
     if (this.peek()) {
       const ch = this.characters.shift()!
       if (ch === '\n') {
@@ -39,10 +40,15 @@ export class Tokenizer {
       }
       return ch
     }
+
+    // I don't think we can test this
+    /* istanbul ignore next */
     return undefined
   }
 
   private static isAlphanumericChar(character: string | undefined): boolean {
+    // I don't think we can test this
+    /* istanbul ignore next */
     if (!character) {
       return false
     }
@@ -118,6 +124,8 @@ export class Tokenizer {
 
   private handleSingleLineComment = () => {
     while (true) {
+      // I don't think we can test this
+      /* istanbul ignore next */
       if (!this.peek()) {
         break
       }

@@ -17,8 +17,4 @@ export class Token {
     this.lineNumber = lineNumber
     this.characterNumber = characterNumber
   }
-
-  toString(): string {
-    return `Token -- ${this.tokenType} -- "${this.value ?? 'None'}"`
-  }
 }

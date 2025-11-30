@@ -1,0 +1,14 @@
+fn main() {
+  let x = 0;
+  
+  while (x < 5) {
+    let y = 1;        // Variable definition in loop
+    x = x + y;        // Assignment in loop
+    if (x > 3) {      // If statement in loop
+      break;
+    }
+  }
+  
+  return x;
+}
+

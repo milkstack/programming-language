@@ -6,8 +6,4 @@ export class PrototypeNode {
     this.name = name
     this.args = args
   }
-
-  getName(): string {
-    return this.name
-  }
 }

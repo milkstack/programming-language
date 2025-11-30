@@ -1,0 +1,7 @@
+let x = 2;
+
+fn main () {
+    let y = x;
+
+    return y;
+}

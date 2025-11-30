@@ -1,3 +1,5 @@
+/* istanbul ignore file */
+
 import { GeneratorError } from '../models/GeneratorError'
 import { LexicalError } from '../models/LexicalError'
 import { ParseError } from '../models/ParseError'

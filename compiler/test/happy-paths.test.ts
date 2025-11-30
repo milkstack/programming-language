@@ -16,6 +16,7 @@ export const expectedResultsMapping: ExpectedResultsMap = {
   forLoop: 3,
   function: 6,
   ifStatement: 2,
+  ifStatementWithReturn: 10,
   whileLoop: 11,
   nestedWhileLoops: 9,
   continue: 6,
@@ -23,6 +24,15 @@ export const expectedResultsMapping: ExpectedResultsMap = {
   singleLineComment: 5,
   multiLineComment: 10,
   mixedComments: 5,
+  globalVars: 2,
+  globalVarsComplex: 15,
+  elseIfWithoutTerminator: 5,
+  decrement: 4,
+  increment: 4,
+  functionCallInExpression: 6,
+  whileLoopWithoutTerminator: 5,
+  forLoopWithoutTerminator: 5,
+  statementsInLoop: 4,
 }
 
 function getAllLanguageFiles(): string[] {

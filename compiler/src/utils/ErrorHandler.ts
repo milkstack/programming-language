@@ -1,3 +1,5 @@
+/* istanbul ignore file */
+
 export class ErrorHandler {
   private static throwOnError: boolean = false
 

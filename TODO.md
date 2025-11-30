@@ -2,11 +2,14 @@
 
   - arrays
     - iterators? map, filter, reduce, forEach
-  - objects
   - strings -- char arrays I assume
     - interpolation + concatenation
   - types
+  - objects
   - && and || -- parantheses may already just work
+  - negative numbers lol
+    - floating point math :(
+  - modulus
 
 - Carry line numbers and character numbers all the way into the generator
 - implement default immutable vars and add a mutable keyword (or Mutable<T> type?)

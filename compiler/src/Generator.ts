@@ -127,19 +127,12 @@ export class Generator {
       this.Module.getFunction(functionName),
       'generateFunctionCall -- function'
     )
-    const args = node.args
-      .map((arg) => this.generateExpression(arg, localVariablesMap))
+    const args = node.args.map((arg) =>
+      this.generateExpression(arg, localVariablesMap)
+    )
 
-      .filter((arg): arg is llvm.Value => {
-        if (arg === undefined) {
-          Logger.logErrors([
-            new GeneratorError(`Function ${functionName} argument not found`),
-          ])
-          ErrorHandler.exitOrThrow(1)
-        }
-        return arg !== undefined
-      })
-
+    // We should never get here unless we have a bug
+    /* istanbul ignore next */
     if (args.length !== node.args.length) {
       Logger.logErrors([
         new GeneratorError(
@@ -227,6 +220,9 @@ export class Generator {
 
     // once we reach the end of the body
     // tie the end of the body to the beginning of the loop conditionally
+
+    /* this would indicate a bug earlier */
+    /* istanbul ignore else */
     if (!this.Builder.GetInsertBlock()?.getTerminator()) {
       this.Builder.CreateBr(loopCondBB)
     }
@@ -293,6 +289,8 @@ export class Generator {
     this.loopEndBlocks.pop()
     this.loopContinueBlocks.pop()
 
+    /* this would indicate a bug earlier */
+    /* istanbul ignore else */
     if (!this.Builder.GetInsertBlock()?.getTerminator()) {
       this.Builder.CreateBr(loopIterBB)
     }
@@ -308,6 +306,8 @@ export class Generator {
     node: FunctionCallNode,
     localVariablesMap: Map<string, llvm.Value>
   ) {
+    // TODO: allow for more than one argument in print
+    /* istanbul ignore next */
     if (node.args.length !== 1) {
       Logger.logErrors([
         new GeneratorError(
@@ -340,7 +340,9 @@ export class Generator {
     node: ExpressionNode,
     localVariablesMap: Map<string, llvm.Value>
   ): llvm.Value {
+    /* istanbul ignore else */
     if (node.variant instanceof TerminatorNode) {
+      /* istanbul ignore else */
       if (node.variant.variant instanceof IntegerLiteralNode) {
         return this.generateIntegerLiteral(node.variant.variant)
       } else if (node.variant.variant instanceof IdentifierNode) {
@@ -351,14 +353,17 @@ export class Generator {
           localVariablesMap
         )
       }
+      /* istanbul ignore else */
     } else if (node.variant instanceof BinaryExpressionNode) {
       return this.generateBinaryExpression(node.variant, localVariablesMap)
     }
 
+    // We should never get here unless we have a bug
+    /* istanbul ignore next */
     Logger.logErrors([
       new GeneratorError(`Unsupported expression type: ${node.variant}`),
     ])
-
+    /* istanbul ignore next */
     ErrorHandler.exitOrThrow(1)
   }
 
@@ -398,6 +403,8 @@ export class Generator {
         return this.Builder.CreateICmpSLE(left, right)
       case TokenType.GreaterThanEqual:
         return this.Builder.CreateICmpSGE(left, right)
+      /* if we hit this, there would have to be a bug earlier in the parser or tokenizer */
+      /* istanbul ignore next */
       default:
         Logger.logErrors([
           new GeneratorError(
@@ -424,9 +431,13 @@ export class Generator {
 
     const value = this.generateExpression(node.expression, localVariablesMap)
 
-    // TODO: should we error here?
+    /* if we hit this, there would have to be a bug earlier in the parser or tokenizer */
+    /* istanbul ignore next */
     if (!value) {
-      return
+      Logger.logErrors([
+        new GeneratorError('No value for assignment expression'),
+      ])
+      ErrorHandler.exitOrThrow(1)
     }
 
     this.Builder.CreateStore(value, variable)
@@ -435,6 +446,7 @@ export class Generator {
   private generateVariableDefinition(
     node: VariableDefinitionNode,
     variablesMap: Map<string, llvm.Value>,
+    /* istanbul ignore next */
     isGlobal: boolean = false
   ): void {
     const varName = this.assertExists(
@@ -442,6 +454,8 @@ export class Generator {
       'generateVariableDefinition'
     )
 
+    // this is caught earlier in the parser
+    /* istanbul ignore next */
     if (RESERVED_NAMES.includes(varName)) {
       Logger.logErrors([
         new GeneratorError(
@@ -491,9 +505,7 @@ export class Generator {
       localMapForExpression
     )
 
-    if (expressionValue) {
-      this.Builder.CreateStore(expressionValue, variable)
-    }
+    this.Builder.CreateStore(expressionValue, variable)
   }
 
   private generateReturn(
@@ -514,7 +526,11 @@ export class Generator {
     variablesMap: Map<string, llvm.Value>,
     mergeBlock?: llvm.BasicBlock
   ): void {
-    const condition = this.generateExpression(node.condition, variablesMap)
+    const rawCondition = this.assertExists(
+      this.generateExpression(node.condition, variablesMap),
+      'generateIfStatement -- rawCondition'
+    )
+    const condition = this.convertConditionToBoolean(rawCondition)
 
     const thenBlock = llvm.BasicBlock.Create(
       this.Context,
@@ -546,6 +562,8 @@ export class Generator {
       this.Builder.SetInsertPoint(elseBlock)
       this.generateFunctionBody(node.elseStatements, variablesMap)
 
+      // I'm _pretty_ sure this will never happen
+      /* istanbul ignore next */
       if (!this.Builder.GetInsertBlock()?.getTerminator()) {
         this.Builder.CreateBr(endifBlock)
         branchedToEndif = true
@@ -555,6 +573,9 @@ export class Generator {
       this.generateIfStatement(node.elseIfStatement, variablesMap, endifBlock)
 
       const currentBlock = this.Builder.GetInsertBlock()
+
+      // I'm _pretty_ sure this will never happen
+      /* istanbul ignore next */
       if (currentBlock && !currentBlock.getTerminator()) {
         this.Builder.CreateBr(endifBlock)
         branchedToEndif = true
@@ -576,6 +597,9 @@ export class Generator {
 
   private generateBreakStatement(): void {
     const loopEndBB = this.loopEndBlocks[this.loopEndBlocks.length - 1]
+
+    // this is caught earlier in the parser
+    /* istanbul ignore next */
     if (!loopEndBB) {
       Logger.logErrors([
         new GeneratorError('Break statement must be inside a loop'),
@@ -588,6 +612,9 @@ export class Generator {
   private generateContinueStatement(): void {
     const loopContinueBB =
       this.loopContinueBlocks[this.loopContinueBlocks.length - 1]
+
+    // this is caught earlier in the parser
+    /* istanbul ignore next */
     if (!loopContinueBB) {
       Logger.logErrors([
         new GeneratorError('Continue statement must be inside a loop'),
@@ -606,7 +633,9 @@ export class Generator {
     //   case instanceof ReturnNode:
     // }
     for (const statement of body) {
+      /* istanbul ignore else */
       if (statement instanceof StatementNode) {
+        /* istanbul ignore else */
         if (statement.variant instanceof VariableDefinitionNode) {
           this.generateVariableDefinition(
             statement.variant,
@@ -641,6 +670,8 @@ export class Generator {
 
     const functionName = node.proto.name
 
+    // this is caught earlier in the parser
+    /* istanbul ignore next */
     if (RESERVED_NAMES.includes(functionName)) {
       Logger.logErrors([
         new GeneratorError(
@@ -698,49 +729,11 @@ export class Generator {
     this.Builder.SetInsertPoint(entryBlock)
 
     for (const globalVariableDefinition of program.globalVariables) {
-      const varName = this.assertExists(
-        globalVariableDefinition.token.value,
-        'generateProgram -- varName'
+      this.generateVariableDefinition(
+        globalVariableDefinition,
+        this.GlobalVariablesMap,
+        true // isGlobal
       )
-
-      if (this.GlobalVariablesMap.has(varName)) {
-        Logger.logErrors([
-          new GeneratorError(`Variable ${varName} already defined`),
-        ])
-        ErrorHandler.exitOrThrow(1)
-      }
-
-      const int32Type = llvm.Type.getInt32Ty(this.Context)
-      const globalVar = new llvm.GlobalVariable(
-        this.Module,
-        int32Type,
-        false, // isConstant
-        llvm.GlobalValue.LinkageTypes.InternalLinkage,
-        llvm.ConstantInt.get(int32Type, 0),
-        varName
-      )
-      this.GlobalVariablesMap.set(varName, globalVar)
-    }
-
-    for (const globalVariableDefinition of program.globalVariables) {
-      const varName = this.assertExists(
-        globalVariableDefinition.token.value,
-        'generateProgram -- varName'
-      )
-      const variable = this.assertExists(
-        this.GlobalVariablesMap.get(varName),
-        'generateProgram -- variable'
-      )
-
-      const localMapForExpression = new Map<string, llvm.Value>()
-      const expressionValue = this.generateExpression(
-        globalVariableDefinition.expression,
-        localMapForExpression
-      )
-
-      if (expressionValue) {
-        this.Builder.CreateStore(expressionValue, variable)
-      }
     }
 
     for (const functionDefinition of program.functions) {

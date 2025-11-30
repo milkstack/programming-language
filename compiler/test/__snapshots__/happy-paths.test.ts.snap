@@ -190,6 +190,66 @@ endif9:                                           ; preds = %else8
 "
 `;
 
+exports[`Language Files Compilation should generate valid IR for decrement 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 5, i32* %x, align 4
+  %x1 = load i32, i32* %x, align 4
+  %0 = sub i32 %x1, 1
+  store i32 %0, i32* %x, align 4
+  %x2 = load i32, i32* %x, align 4
+  ret i32 %x2
+}
+"
+`;
+
+exports[`Language Files Compilation should generate valid IR for elseIfWithoutTerminator 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 5, i32* %x, align 4
+  %x1 = load i32, i32* %x, align 4
+  %0 = icmp sgt i32 %x1, 10
+  br i1 %0, label %then, label %else
+
+then:                                             ; preds = %entry
+  store i32 0, i32* %x, align 4
+  br label %endif
+
+else:                                             ; preds = %entry
+  %x2 = load i32, i32* %x, align 4
+  %1 = icmp sgt i32 %x2, 20
+  br i1 %1, label %then3, label %else4
+
+endif:                                            ; preds = %else4, %then3, %then
+  %x5 = load i32, i32* %x, align 4
+  ret i32 %x5
+
+then3:                                            ; preds = %else
+  store i32 7, i32* %x, align 4
+  br label %endif
+
+else4:                                            ; preds = %else
+  br label %endif
+}
+"
+`;
+
 exports[`Language Files Compilation should generate valid IR for expression 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
@@ -264,6 +324,46 @@ for.end:                                          ; preds = %for.cond
 "
 `;
 
+exports[`Language Files Compilation should generate valid IR for forLoopWithoutTerminator 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 0, i32* %x, align 4
+  %i = alloca i32, align 4
+  store i32 0, i32* %i, align 4
+  br label %for.cond
+
+for.cond:                                         ; preds = %for.iter, %entry
+  %i1 = load i32, i32* %i, align 4
+  %0 = icmp slt i32 %i1, 5
+  br i1 %0, label %for.body, label %for.end
+
+for.body:                                         ; preds = %for.cond
+  %x2 = load i32, i32* %x, align 4
+  %1 = add i32 %x2, 1
+  store i32 %1, i32* %x, align 4
+  br label %for.iter
+
+for.iter:                                         ; preds = %for.body
+  %i3 = load i32, i32* %i, align 4
+  %2 = add i32 %i3, 1
+  store i32 %2, i32* %i, align 4
+  br label %for.cond
+
+for.end:                                          ; preds = %for.cond
+  %x4 = load i32, i32* %x, align 4
+  ret i32 %x4
+}
+"
+`;
+
 exports[`Language Files Compilation should generate valid IR for function 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
@@ -301,7 +401,174 @@ entry:
 "
 `;
 
+exports[`Language Files Compilation should generate valid IR for functionCallInExpression 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  %0 = call i32 @add(i32 2, i32 3)
+  %1 = add i32 %0, 1
+  store i32 %1, i32* %x, align 4
+  %x1 = load i32, i32* %x, align 4
+  ret i32 %x1
+}
+
+define i32 @add(i32 %a, i32 %b) {
+entry:
+  %a1 = alloca i32, align 4
+  store i32 %a, i32* %a1, align 4
+  %b2 = alloca i32, align 4
+  store i32 %b, i32* %b2, align 4
+  %a3 = load i32, i32* %a1, align 4
+  %b4 = load i32, i32* %b2, align 4
+  %0 = add i32 %a3, %b4
+  ret i32 %0
+}
+"
+`;
+
+exports[`Language Files Compilation should generate valid IR for globalVars 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+@x = internal global i32 0
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  store i32 2, i32* @x, align 4
+  %y = alloca i32, align 4
+  %x = load i32, i32* @x, align 4
+  store i32 %x, i32* %y, align 4
+  %y1 = load i32, i32* %y, align 4
+  ret i32 %y1
+}
+"
+`;
+
+exports[`Language Files Compilation should generate valid IR for globalVarsComplex 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+@x = internal global i32 0
+@y = internal global i32 0
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  store i32 5, i32* @x, align 4
+  store i32 10, i32* @y, align 4
+  %z = alloca i32, align 4
+  %x = load i32, i32* @x, align 4
+  %y = load i32, i32* @y, align 4
+  %0 = add i32 %x, %y
+  store i32 %0, i32* %z, align 4
+  %z1 = load i32, i32* %z, align 4
+  ret i32 %z1
+}
+"
+`;
+
 exports[`Language Files Compilation should generate valid IR for ifStatement 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 0, i32* %x, align 4
+  br i1 true, label %then, label %else
+
+then:                                             ; preds = %entry
+  store i32 5, i32* %x, align 4
+  br label %endif
+
+else:                                             ; preds = %entry
+  br label %endif
+
+endif:                                            ; preds = %else, %then
+  %x1 = load i32, i32* %x, align 4
+  %0 = icmp sle i32 %x1, 4
+  br i1 %0, label %then2, label %else3
+
+then2:                                            ; preds = %endif
+  store i32 0, i32* %x, align 4
+  br label %endif4
+
+else3:                                            ; preds = %endif
+  %x5 = load i32, i32* %x, align 4
+  %1 = icmp sge i32 %x5, 4
+  br i1 %1, label %then6, label %else7
+
+endif4:                                           ; preds = %else7, %then6, %then2
+  %x8 = load i32, i32* %x, align 4
+  %2 = icmp sgt i32 %x8, 6
+  br i1 %2, label %then9, label %else10
+
+then6:                                            ; preds = %else3
+  store i32 7, i32* %x, align 4
+  br label %endif4
+
+else7:                                            ; preds = %else3
+  br label %endif4
+
+then9:                                            ; preds = %endif4
+  store i32 2, i32* %x, align 4
+  br label %endif11
+
+else10:                                           ; preds = %endif4
+  store i32 0, i32* %x, align 4
+  br label %endif11
+
+endif11:                                          ; preds = %else10, %then9
+  %x12 = load i32, i32* %x, align 4
+  %x13 = load i32, i32* %x, align 4
+  %3 = icmp ne i32 %x12, %x13
+  br i1 %3, label %then14, label %else15
+
+then14:                                           ; preds = %endif11
+  ret i32 100
+
+else15:                                           ; preds = %endif11
+  br label %endif16
+
+endif16:                                          ; preds = %else15
+  %x17 = load i32, i32* %x, align 4
+  %4 = icmp eq i32 %x17, 2
+  br i1 %4, label %then18, label %else19
+
+then18:                                           ; preds = %endif16
+  %x21 = load i32, i32* %x, align 4
+  %5 = add i32 %x21, 1
+  store i32 %5, i32* %x, align 4
+  br label %endif20
+
+else19:                                           ; preds = %endif16
+  br label %endif20
+
+endif20:                                          ; preds = %else19, %then18
+  %x22 = load i32, i32* %x, align 4
+  %6 = sub i32 %x22, 1
+  ret i32 %6
+}
+"
+`;
+
+exports[`Language Files Compilation should generate valid IR for ifStatementWithReturn 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
 
@@ -314,31 +581,48 @@ entry:
   %x = alloca i32, align 4
   store i32 5, i32* %x, align 4
   %x1 = load i32, i32* %x, align 4
-  %0 = icmp sgt i32 %x1, 6
+  %0 = icmp sgt i32 %x1, 3
   br i1 %0, label %then, label %else
 
 then:                                             ; preds = %entry
-  store i32 0, i32* %x, align 4
-  br label %endif
+  ret i32 10
 
 else:                                             ; preds = %entry
-  br label %endif
-
-endif:                                            ; preds = %else, %then
   %x2 = load i32, i32* %x, align 4
   %1 = icmp sgt i32 %x2, 1
   br i1 %1, label %then3, label %else4
 
-then3:                                            ; preds = %endif
-  store i32 2, i32* %x, align 4
-  br label %endif5
+endif:                                            ; preds = %else4
+  unreachable
+  %x5 = load i32, i32* %x, align 4
+  ret i32 %x5
 
-else4:                                            ; preds = %endif
-  br label %endif5
+then3:                                            ; preds = %else
+  ret i32 20
 
-endif5:                                           ; preds = %else4, %then3
-  %x6 = load i32, i32* %x, align 4
-  ret i32 %x6
+else4:                                            ; preds = %else
+  br label %endif
+}
+"
+`;
+
+exports[`Language Files Compilation should generate valid IR for increment 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 3, i32* %x, align 4
+  %x1 = load i32, i32* %x, align 4
+  %0 = add i32 %x1, 1
+  store i32 %0, i32* %x, align 4
+  %x2 = load i32, i32* %x, align 4
+  ret i32 %x2
 }
 "
 `;
@@ -452,6 +736,52 @@ entry:
 "
 `;
 
+exports[`Language Files Compilation should generate valid IR for statementsInLoop 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 0, i32* %x, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %endif, %entry
+  %x1 = load i32, i32* %x, align 4
+  %0 = icmp slt i32 %x1, 5
+  br i1 %0, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %y = alloca i32, align 4
+  store i32 1, i32* %y, align 4
+  %x2 = load i32, i32* %x, align 4
+  %y3 = load i32, i32* %y, align 4
+  %1 = add i32 %x2, %y3
+  store i32 %1, i32* %x, align 4
+  %x4 = load i32, i32* %x, align 4
+  %2 = icmp sgt i32 %x4, 3
+  br i1 %2, label %then, label %else
+
+while.end:                                        ; preds = %then, %while.cond
+  %x5 = load i32, i32* %x, align 4
+  ret i32 %x5
+
+then:                                             ; preds = %while.body
+  br label %while.end
+
+else:                                             ; preds = %while.body
+  br label %endif
+
+endif:                                            ; preds = %else
+  br label %while.cond
+}
+"
+`;
+
 exports[`Language Files Compilation should generate valid IR for whileLoop 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
@@ -469,6 +799,38 @@ entry:
 while.cond:                                       ; preds = %while.body, %entry
   %x1 = load i32, i32* %x, align 4
   %0 = icmp slt i32 %x1, 11
+  br i1 %0, label %while.body, label %while.end
+
+while.body:                                       ; preds = %while.cond
+  %x2 = load i32, i32* %x, align 4
+  %1 = add i32 %x2, 1
+  store i32 %1, i32* %x, align 4
+  br label %while.cond
+
+while.end:                                        ; preds = %while.cond
+  %x3 = load i32, i32* %x, align 4
+  ret i32 %x3
+}
+"
+`;
+
+exports[`Language Files Compilation should generate valid IR for whileLoopWithoutTerminator 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 0, i32* %x, align 4
+  br label %while.cond
+
+while.cond:                                       ; preds = %while.body, %entry
+  %x1 = load i32, i32* %x, align 4
+  %0 = icmp slt i32 %x1, 5
   br i1 %0, label %while.body, label %while.end
 
 while.body:                                       ; preds = %while.cond

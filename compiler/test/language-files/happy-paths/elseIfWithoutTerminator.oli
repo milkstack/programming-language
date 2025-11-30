@@ -1,0 +1,15 @@
+fn main() {
+  let x = 5;
+
+  if (x > 10) {
+    x = 0;
+  } else if (x > 20) {
+    x = 7;
+    // When x > 20 is false (x is 5), the else if's implicit else should branch to endif
+    // But if the current block after the recursive call doesn't have a terminator,
+    // this should trigger lines 558-561
+  }
+
+  return x;
+}
+

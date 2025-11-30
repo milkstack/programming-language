@@ -180,6 +180,8 @@ export class Parser {
         possibleOperator.tokenType
       )!
 
+      /* TODO: implement right associative operators like exponentiation */
+      /* istanbul ignore next */
       const nextMinPrecedence = precedence + (associativity === 'left' ? 1 : 0)
 
       this.consume()
@@ -271,7 +273,7 @@ export class Parser {
     return new VariableDefinitionNode(identifierToken, expression)
   }
 
-  private parseIfStatement(inLoop: boolean = false): IfStatementNode {
+  private parseIfStatement(inLoop: boolean): IfStatementNode {
     this.consume(TokenType.If)
 
     const condition = this.parseExpression()
@@ -352,7 +354,7 @@ export class Parser {
     return new WhileLoopNode(condition, body)
   }
 
-  private parseStatement(inLoop: boolean = false): StatementNode {
+  private parseStatement(inLoop: boolean): StatementNode {
     const token = this.peekOrExit()
 
     if (token.tokenType === TokenType.If) {

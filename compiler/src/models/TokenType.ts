@@ -36,6 +36,11 @@ export enum TokenType {
   While = 'While',
   Continue = 'Continue',
   Break = 'Break',
+  And = 'And',
+  Or = 'Or',
+  SingleLineComment = 'SingleLineComment',
+  MultiLineCommentStart = 'MultiLineCommentStart',
+  MultiLineCommentEnd = 'MultiLineCommentEnd',
 }
 
 const TOKEN_TYPE_MAP = new Map<string, TokenType>([
@@ -49,6 +54,7 @@ const TOKEN_TYPE_MAP = new Map<string, TokenType>([
   ['while', TokenType.While],
   ['continue', TokenType.Continue],
   ['break', TokenType.Break],
+  //
   ['(', TokenType.LeftParen],
   [')', TokenType.RightParen],
   ['[', TokenType.LeftBracket],
@@ -74,6 +80,11 @@ export const DOUBLE_CHAR_TOKEN_TYPE_MAP = new Map<string, TokenType>([
   ['!=', TokenType.NotEqual],
   ['++', TokenType.PlusPlus],
   ['--', TokenType.MinusMinus],
+  ['&&', TokenType.And],
+  ['||', TokenType.Or],
+  ['//', TokenType.SingleLineComment],
+  ['/*', TokenType.MultiLineCommentStart],
+  ['*/', TokenType.MultiLineCommentEnd],
 ])
 
 export function tokenTypeFromString(str: string): TokenType {

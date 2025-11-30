@@ -1,4 +1,5 @@
 import * as fs from 'fs'
+import * as fsPromises from 'fs/promises'
 import * as path from 'path'
 import { testOutputDir, compileAndRun } from './util/runner'
 
@@ -17,10 +18,10 @@ describe('Print Function Tests', () => {
     }
   })
 
-  it('should print to stdout correctly', () => {
-    const { returnVal, stdout, irPath } = compileAndRun(fileName)
+  it('should print to stdout correctly', async () => {
+    const { returnVal, stdout, irPath } = await compileAndRun(fileName)
 
-    const ir = fs.readFileSync(irPath, 'utf-8')
+    const ir = await fsPromises.readFile(irPath, 'utf-8')
     expect(ir).toMatchSnapshot()
 
     expect(returnVal).toBe(0)

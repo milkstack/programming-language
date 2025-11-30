@@ -1,0 +1,9 @@
+fn main () {
+    // Single line comment at start
+    let x = 0;
+    /* Multi-line comment in the middle */
+    let y = 5;
+    // Comment before return
+    return x + y;
+}
+

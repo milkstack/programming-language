@@ -1,4 +1,5 @@
 import * as fs from 'fs'
+import * as fsPromises from 'fs/promises'
 import * as path from 'path'
 import { compileAndRun, testOutputDir } from './util/runner'
 
@@ -19,36 +20,26 @@ export const expectedResultsMapping: ExpectedResultsMap = {
   nestedWhileLoops: 9,
   continue: 6,
   break: 6,
+  singleLineComment: 5,
+  multiLineComment: 10,
+  mixedComments: 5,
 }
 
 function getAllLanguageFiles(): string[] {
   const files = fs.readdirSync(languageFilesDir)
   return files
-    .filter((file) => file.endsWith('.oli'))
-    .map((file) => path.basename(file, '.oli'))
+    .filter((file: string) => file.endsWith('.oli'))
+    .map((file: string) => path.basename(file, '.oli'))
 }
 
 describe('Language Files Compilation', () => {
   const languageFiles = getAllLanguageFiles()
 
-  afterEach(() => {
-    languageFiles.forEach((fileName) => {
-      const irFilePath = path.join(testOutputDir, `${fileName}.ll`)
-      const binaryFilePath = path.join(testOutputDir, fileName)
-
-      if (fs.existsSync(irFilePath)) {
-        fs.unlinkSync(irFilePath)
-      }
-      if (fs.existsSync(binaryFilePath)) {
-        fs.unlinkSync(binaryFilePath)
-      }
-    })
-  })
-
-  describe('IR Generation', () => {
-    it.each(languageFiles)('should generate valid IR for %s', (fileName) => {
-      const { irPath, returnVal } = compileAndRun(fileName, 'happy-paths')
-      const ir = fs.readFileSync(irPath, 'utf-8')
+  it.concurrent.each(languageFiles)(
+    'should generate valid IR for %s',
+    async (fileName) => {
+      const { irPath, returnVal } = await compileAndRun(fileName, 'happy-paths')
+      const ir = await fsPromises.readFile(irPath, 'utf-8')
 
       expect(ir).toMatchSnapshot()
 
@@ -60,6 +51,6 @@ describe('Language Files Compilation', () => {
           `No expected results mapping found for "${fileName}". Please add an entry to expectedResultsMapping in happy-paths.test.ts for this file, including the expected return value.`
         )
       }
-    })
-  })
+    }
+  )
 })

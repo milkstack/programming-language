@@ -1,5 +1,8 @@
 fn main () {
 
+    // this should all be gone
+    /* so should this */
+
     let x = 0;
     let y = 0;
 

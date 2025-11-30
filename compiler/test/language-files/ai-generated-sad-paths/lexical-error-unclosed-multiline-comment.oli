@@ -1,0 +1,6 @@
+fn main() {
+    /* This is an unclosed multi-line comment
+    let x = 5;
+    return x;
+}
+

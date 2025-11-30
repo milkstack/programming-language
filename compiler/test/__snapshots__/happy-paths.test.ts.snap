@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
-exports[`Language Files Compilation IR Generation should generate valid IR for assignment 1`] = `
+exports[`Language Files Compilation should generate valid IR for assignment 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
 
@@ -19,7 +19,7 @@ entry:
 "
 `;
 
-exports[`Language Files Compilation IR Generation should generate valid IR for binaryExpression 1`] = `
+exports[`Language Files Compilation should generate valid IR for binaryExpression 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
 
@@ -34,7 +34,7 @@ entry:
 "
 `;
 
-exports[`Language Files Compilation IR Generation should generate valid IR for break 1`] = `
+exports[`Language Files Compilation should generate valid IR for break 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
 
@@ -109,7 +109,7 @@ endif8:                                           ; preds = %else7
 "
 `;
 
-exports[`Language Files Compilation IR Generation should generate valid IR for continue 1`] = `
+exports[`Language Files Compilation should generate valid IR for continue 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
 
@@ -190,7 +190,7 @@ endif9:                                           ; preds = %else8
 "
 `;
 
-exports[`Language Files Compilation IR Generation should generate valid IR for expression 1`] = `
+exports[`Language Files Compilation should generate valid IR for expression 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
 
@@ -205,7 +205,7 @@ entry:
 "
 `;
 
-exports[`Language Files Compilation IR Generation should generate valid IR for expressionStatement 1`] = `
+exports[`Language Files Compilation should generate valid IR for expressionStatement 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
 
@@ -225,7 +225,7 @@ entry:
 "
 `;
 
-exports[`Language Files Compilation IR Generation should generate valid IR for forLoop 1`] = `
+exports[`Language Files Compilation should generate valid IR for forLoop 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
 
@@ -264,7 +264,7 @@ for.end:                                          ; preds = %for.cond
 "
 `;
 
-exports[`Language Files Compilation IR Generation should generate valid IR for function 1`] = `
+exports[`Language Files Compilation should generate valid IR for function 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
 
@@ -301,7 +301,7 @@ entry:
 "
 `;
 
-exports[`Language Files Compilation IR Generation should generate valid IR for ifStatement 1`] = `
+exports[`Language Files Compilation should generate valid IR for ifStatement 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
 
@@ -343,7 +343,47 @@ endif5:                                           ; preds = %else4, %then3
 "
 `;
 
-exports[`Language Files Compilation IR Generation should generate valid IR for nestedWhileLoops 1`] = `
+exports[`Language Files Compilation should generate valid IR for mixedComments 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 0, i32* %x, align 4
+  %y = alloca i32, align 4
+  store i32 5, i32* %y, align 4
+  %x1 = load i32, i32* %x, align 4
+  %y2 = load i32, i32* %y, align 4
+  %0 = add i32 %x1, %y2
+  ret i32 %0
+}
+"
+`;
+
+exports[`Language Files Compilation should generate valid IR for multiLineComment 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 10, i32* %x, align 4
+  %x1 = load i32, i32* %x, align 4
+  ret i32 %x1
+}
+"
+`;
+
+exports[`Language Files Compilation should generate valid IR for nestedWhileLoops 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
 
@@ -394,7 +434,25 @@ while.end6:                                       ; preds = %while.cond4
 "
 `;
 
-exports[`Language Files Compilation IR Generation should generate valid IR for whileLoop 1`] = `
+exports[`Language Files Compilation should generate valid IR for singleLineComment 1`] = `
+"; ModuleID = 'main'
+source_filename = "main"
+
+@print_format = private constant [4 x i8] c"%d\\0A\\00"
+
+declare i32 @printf(i8*, ...)
+
+define i32 @main() {
+entry:
+  %x = alloca i32, align 4
+  store i32 5, i32* %x, align 4
+  %x1 = load i32, i32* %x, align 4
+  ret i32 %x1
+}
+"
+`;
+
+exports[`Language Files Compilation should generate valid IR for whileLoop 1`] = `
 "; ModuleID = 'main'
 source_filename = "main"
 

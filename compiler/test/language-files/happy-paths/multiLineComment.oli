@@ -1,0 +1,8 @@
+fn main () {
+    /* This is a multi-line comment
+       that spans multiple lines */
+    let x = 10;
+    /* Another multi-line comment */
+    return x;
+}
+

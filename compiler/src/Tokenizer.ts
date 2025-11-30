@@ -116,6 +116,41 @@ export class Tokenizer {
     return DOUBLE_CHAR_TOKEN_TYPE_MAP.get(doubleChar)
   }
 
+  private handleSingleLineComment = () => {
+    while (true) {
+      if (!this.peek()) {
+        break
+      }
+
+      const char = this.consumeChar()
+      if (char === '\n') {
+        break
+      }
+    }
+  }
+
+  private handleMultiLineComment = () => {
+    while (true) {
+      if (!this.peek() || !this.peek(1)) {
+        this.errors.push(
+          new LexicalError(
+            'Expected end of multiline comment "*/" but found EOF',
+            this.lineNumberCursor,
+            this.characterCursor
+          )
+        )
+        break
+      }
+
+      const char = this.consumeChar()
+      const next = this.peek()
+      if (char === '*' && next === '/') {
+        this.consumeChar() // Consume the closing '/'
+        break
+      }
+    }
+  }
+
   // pretty hacky. Turns i++ into i = i + 1
   private handlePlusPlus(tokenType: TokenType) {
     const identifier = this.tokens[this.tokens.length - 1]
@@ -178,6 +213,16 @@ export class Tokenizer {
           doubleCharTokenType === TokenType.MinusMinus
         ) {
           this.handlePlusPlus(doubleCharTokenType)
+          continue
+        }
+
+        if (doubleCharTokenType === TokenType.SingleLineComment) {
+          this.handleSingleLineComment()
+          continue
+        }
+        // I don't _think_ I have to check for Ends and error since the top level parser with disallow that
+        if (doubleCharTokenType === TokenType.MultiLineCommentStart) {
+          this.handleMultiLineComment()
           continue
         }
 

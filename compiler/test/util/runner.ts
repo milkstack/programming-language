@@ -2,7 +2,6 @@ import path from 'path'
 import { main } from '../../src/main'
 import { execSync } from 'child_process'
 
-path
 const compilerDir = path.resolve(__dirname, '..')
 export const testOutputDir = path.join(compilerDir, 'test-output')
 
@@ -14,7 +13,12 @@ export function getLanguageFilePath(): string {
 
   const baseName = path.basename(testPath, '.test.ts')
 
-  return path.join(path.dirname(testPath), 'language-files', `${baseName}.oli`)
+  return path.join(
+    path.dirname(testPath),
+    'language-files',
+    'happy-paths',
+    `${baseName}.oli`
+  )
 }
 
 export function compileToIR(fileName: string): string {
@@ -22,6 +26,7 @@ export function compileToIR(fileName: string): string {
     __dirname,
     '..',
     'language-files',
+    'happy-paths',
     `${fileName}.oli`
   )
 

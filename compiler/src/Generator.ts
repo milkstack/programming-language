@@ -19,13 +19,18 @@ import { AssignmentNode } from './models/nodes/AssignmentNode'
 import { Logger } from './utils/Logger'
 import { WhileLoopNode } from './models/nodes/WhileLoopNode'
 import { ErrorHandler } from './utils/ErrorHandler'
+import { BreakStatementNode } from './models/nodes/BreakStatementNode'
+import { ContinueStatementNode } from './models/nodes/ContinueStatementNode'
 
 export class Generator {
   private GlobalVariablesMap: Map<string, llvm.Value> = new Map()
   private Builder: llvm.IRBuilder
   private Context: llvm.LLVMContext
   private Module: llvm.Module
+  // I'm like 90% sure Function isn't needed
   private Function: llvm.Function | undefined
+  private loopEndBlocks: llvm.BasicBlock[] = []
+  private loopContinueBlocks: llvm.BasicBlock[] = []
 
   constructor() {
     this.Context = new llvm.LLVMContext()
@@ -171,7 +176,14 @@ export class Generator {
 
     // populates the body of of the loop
     this.Builder.SetInsertPoint(loopBodyBB)
+
+    // keep track of loop blocks onto stack for break/continue statements
+    this.loopEndBlocks.push(loopEndBB)
+    this.loopContinueBlocks.push(loopCondBB)
     this.generateFunctionBody(node.body, localVariablesMap)
+    // remove loop blocks from stack once we've generated the body of the loop
+    this.loopEndBlocks.pop()
+    this.loopContinueBlocks.pop()
 
     // once we reach the end of the body
     // tie the end of the body to the beginning of the loop conditionally
@@ -179,7 +191,7 @@ export class Generator {
       this.Builder.CreateBr(loopCondBB)
     }
 
-    // set our cursor back to tha "after loop" section
+    // set our cursor back to the "after loop" section
     this.Builder.SetInsertPoint(loopEndBB)
   }
 
@@ -232,7 +244,15 @@ export class Generator {
     this.Builder.CreateCondBr(condition, loopBodyBB, loopEndBB)
 
     this.Builder.SetInsertPoint(loopBodyBB)
+
+    this.loopEndBlocks.push(loopEndBB)
+    this.loopContinueBlocks.push(loopIterBB)
+
     this.generateFunctionBody(node.body, localVariablesMap)
+
+    this.loopEndBlocks.pop()
+    this.loopContinueBlocks.pop()
+
     if (!this.Builder.GetInsertBlock()?.getTerminator()) {
       this.Builder.CreateBr(loopIterBB)
     }
@@ -473,10 +493,37 @@ export class Generator {
     }
   }
 
+  private generateBreakStatement(): void {
+    const loopEndBB = this.loopEndBlocks[this.loopEndBlocks.length - 1]
+    if (!loopEndBB) {
+      Logger.logErrors([
+        new GeneratorError('Break statement must be inside a loop'),
+      ])
+      ErrorHandler.exitOrThrow(1)
+    }
+    this.Builder.CreateBr(loopEndBB)
+  }
+
+  private generateContinueStatement(): void {
+    const loopContinueBB =
+      this.loopContinueBlocks[this.loopContinueBlocks.length - 1]
+    if (!loopContinueBB) {
+      Logger.logErrors([
+        new GeneratorError('Continue statement must be inside a loop'),
+      ])
+      ErrorHandler.exitOrThrow(1)
+    }
+    this.Builder.CreateBr(loopContinueBB)
+  }
+
   private generateFunctionBody(
     body: StatementNode[],
     variablesMap: Map<string, llvm.Value>
   ): void {
+    // actually lame that you can't
+    // switch(statement.variant) {
+    //   case instanceof ReturnNode:
+    // }
     for (const statement of body) {
       if (statement instanceof StatementNode) {
         if (statement.variant instanceof VariableDefinitionNode) {
@@ -497,6 +544,10 @@ export class Generator {
           this.generateWhileLoop(statement.variant, variablesMap)
         } else if (statement.variant instanceof AssignmentNode) {
           this.generateAssignment(statement.variant, variablesMap)
+        } else if (statement.variant instanceof BreakStatementNode) {
+          this.generateBreakStatement()
+        } else if (statement.variant instanceof ContinueStatementNode) {
+          this.generateContinueStatement()
         }
       }
     }

@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { compileAndRun, testOutputDir } from './util/runner'
 
-const languageFilesDir = path.join(__dirname, 'language-files')
+const languageFilesDir = path.join(__dirname, 'language-files', 'happy-paths')
 
 type ExpectedResultsMap = Record<string, number>
 
@@ -16,6 +16,9 @@ export const expectedResultsMapping: ExpectedResultsMap = {
   function: 6,
   ifStatement: 2,
   whileLoop: 11,
+  nestedWhileLoops: 9,
+  continue: 6,
+  break: 6,
 }
 
 function getAllLanguageFiles(): string[] {

@@ -21,6 +21,8 @@ import { TerminatorNode } from './models/nodes/TerminatorNode'
 import { VariableDefinitionNode } from './models/nodes/VariableDefinitionNode'
 import { WhileLoopNode } from './models/nodes/WhileLoopNode'
 import { ErrorHandler } from './utils/ErrorHandler'
+import { BreakStatementNode } from './models/nodes/BreakStatementNode'
+import { ContinueStatementNode } from './models/nodes/ContinueStatementNode'
 
 export class Parser {
   private tokens: Token[]
@@ -134,7 +136,7 @@ export class Parser {
 
     this.consume(TokenType.RightParen)
 
-    const body = this.parseBody()
+    const body = this.parseBody(true)
 
     return new ForLoopNode(variableDefinitionNode, condition, iterator, body)
   }
@@ -188,13 +190,13 @@ export class Parser {
     return args
   }
 
-  private parseBody(): StatementNode[] {
+  private parseBody(inLoop: boolean = false): StatementNode[] {
     this.consume(TokenType.LeftCurly)
 
     const statements: StatementNode[] = []
 
     while (this.peek() && this.peek()!.tokenType !== TokenType.RightCurly) {
-      const statementNode = this.parseStatement()
+      const statementNode = this.parseStatement(inLoop)
       statements.push(statementNode)
     }
 
@@ -247,12 +249,12 @@ export class Parser {
     return new VariableDefinitionNode(identifierToken, expression)
   }
 
-  private parseIfStatement(): IfStatementNode {
+  private parseIfStatement(inLoop: boolean = false): IfStatementNode {
     this.consume(TokenType.If)
 
     const condition = this.parseExpression()
 
-    const thenStatements = this.parseBody()
+    const thenStatements = this.parseBody(inLoop)
 
     let elseIfStatement: IfStatementNode | undefined
     let elseStatements: StatementNode[] = []
@@ -261,9 +263,9 @@ export class Parser {
       this.consume(TokenType.Else)
 
       if (this.peek()?.tokenType === TokenType.If) {
-        elseIfStatement = this.parseIfStatement()
+        elseIfStatement = this.parseIfStatement(inLoop)
       } else {
-        elseStatements = this.parseBody()
+        elseStatements = this.parseBody(inLoop)
       }
     }
 
@@ -323,16 +325,16 @@ export class Parser {
 
     this.consume(TokenType.RightParen)
 
-    const body = this.parseBody()
+    const body = this.parseBody(true)
 
     return new WhileLoopNode(condition, body)
   }
 
-  private parseStatement(): StatementNode {
+  private parseStatement(inLoop: boolean = false): StatementNode {
     const token = this.peekOrExit()
 
     if (token.tokenType === TokenType.If) {
-      return new StatementNode(this.parseIfStatement())
+      return new StatementNode(this.parseIfStatement(inLoop))
     }
 
     if (token.tokenType === TokenType.Return) {
@@ -355,8 +357,34 @@ export class Parser {
       return new StatementNode(this.parseWhileLoop())
     }
 
+    if (
+      !inLoop &&
+      (token.tokenType === TokenType.Break ||
+        token.tokenType === TokenType.Continue)
+    ) {
+      Logger.logErrors([
+        new ParseError(
+          '"break" and "continue" statements can only be used inside a loop',
+          token.lineNumber
+        ),
+      ])
+      ErrorHandler.exitOrThrow(1)
+    }
+
+    if (token.tokenType === TokenType.Break) {
+      this.consume(TokenType.Break)
+      this.consume(TokenType.Semicolon)
+      return new StatementNode(new BreakStatementNode())
+    }
+
+    if (token.tokenType === TokenType.Continue) {
+      this.consume(TokenType.Continue)
+      this.consume(TokenType.Semicolon)
+      return new StatementNode(new ContinueStatementNode())
+    }
+
     // last option. Exit here if we don't find an identifier
-    const identifierToken = this.peekOrExit(TokenType.Identifier)
+    this.peekOrExit(TokenType.Identifier)
 
     if (this.peek(1) && this.peek(1)!.tokenType === TokenType.Assign) {
       const assignment = this.parseAssignment()

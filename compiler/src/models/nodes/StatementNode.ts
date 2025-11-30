@@ -1,4 +1,6 @@
 import { AssignmentNode } from './AssignmentNode'
+import { BreakStatementNode } from './BreakStatementNode'
+import { ContinueStatementNode } from './ContinueStatementNode'
 import { ExpresssionStatementNode } from './ExpressionStatementNode'
 import { ForLoopNode } from './ForLoopNode'
 import { IfStatementNode } from './IfStatementNode'
@@ -15,6 +17,8 @@ export class StatementNode {
     | ForLoopNode
     | AssignmentNode
     | WhileLoopNode
+    | BreakStatementNode
+    | ContinueStatementNode
 
   constructor(
     variant:
@@ -25,6 +29,8 @@ export class StatementNode {
       | ForLoopNode
       | AssignmentNode
       | WhileLoopNode
+      | BreakStatementNode
+      | ContinueStatementNode
   ) {
     this.variant = variant
   }

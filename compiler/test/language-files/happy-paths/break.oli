@@ -1,31 +1,23 @@
 fn main () {
 
     let x = 0;
-    let y = 0;
 
     while (x < 9) {
         x++;
         
-
-        if (x > 4) {
-            continue;
+        if (x > 3) {
+            break;
         }
-
-        y++;
     }
 
     for (i = 0; i < 4; i++) {
 
         if (i > 1) {
-            continue;
+            break;
         }
 
-        y++;
-
     }
-    
 
-
-    return y;
+    return x + i;
 }
 

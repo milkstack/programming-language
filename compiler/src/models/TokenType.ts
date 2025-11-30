@@ -34,8 +34,8 @@ export enum TokenType {
   PlusPlus = 'PlusPlus',
   MinusMinus = 'MinusMinus',
   While = 'While',
-  // Continue = 'Continue',
-  // Break = 'Break',
+  Continue = 'Continue',
+  Break = 'Break',
 }
 
 const TOKEN_TYPE_MAP = new Map<string, TokenType>([
@@ -47,8 +47,8 @@ const TOKEN_TYPE_MAP = new Map<string, TokenType>([
   ['elseif', TokenType.ElseIf],
   ['for', TokenType.For],
   ['while', TokenType.While],
-  // ['continue', TokenType.Continue],
-  // ['break', TokenType.Break],
+  ['continue', TokenType.Continue],
+  ['break', TokenType.Break],
   ['(', TokenType.LeftParen],
   [')', TokenType.RightParen],
   ['[', TokenType.LeftBracket],

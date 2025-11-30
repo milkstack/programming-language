@@ -1,6 +1,5 @@
 - add features
 
-  - break/continue
   - printing to the console
   - arrays
     - iterators? map, filter, reduce, forEach
